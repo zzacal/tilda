@@ -12,9 +12,9 @@ export default class Server {
     this.express.use(express.urlencoded({ extended: true }));
     this.express.use(express.json());
 
-    this.express.use((req, res, next) => {
+    this.express.use((req, res, _next) => {
       const path = req.path;
-      const params = req.params;
+      const params = req.query;
       const body = req.body;
       // retrieve the results for the following combo
       res.send(`${path}, ${JSON.stringify(params)}, ${JSON.stringify(body)}`)
