@@ -1,10 +1,13 @@
 import express from "express";
+import Store from "./cacher/store";
+import { fetch, mock } from "./handlers";
 
 export default class Server {
-  express: express.Express;
+  express: express.Express = express();
   port: number;
+  store: Store = new Store();
+
   constructor(port: number) {
-    this.express = express();
     this.port = port;
   }
 
@@ -12,15 +15,9 @@ export default class Server {
     this.express.use(express.urlencoded({ extended: true }));
     this.express.use(express.json());
 
-    this.express.use((req, res, _next) => {
-      const path = req.path;
-      const params = req.query;
-      const body = req.body;
-      // retrieve the results for the following combo
-      res.send(`${path}, ${JSON.stringify(params)}, ${JSON.stringify(body)}`)
-    });
+    this.express.use(fetch(this.store));
 
-    this.express.post("/");
+    this.express.post("/mock", mock(this.store));
     this.listen();
   }
 
