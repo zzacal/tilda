@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 export default class Store {
   private cache: record[] = [];
   constructor() {}
@@ -11,8 +12,8 @@ export default class Store {
   get(path: string, params?: any, body?: any): record {
     return this.cache
       .filter((r) => r.path === path)
-      .filter((r) => r.params === params)
-      .filter((r) => r.body === body)[0];
+      .filter((r) => _.isEqual(r.params, params))
+      .filter((r) => _.isEqual(r.body, body))[0];
   }
 
   // update(response: any, path: string, params?: any, body?: any): void {}

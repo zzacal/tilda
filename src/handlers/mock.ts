@@ -7,6 +7,5 @@ export const mock = (store: Store) => (req: Request, res: Response) => {
   const body = req.body.body;
   const val = req.body.val;
   const result = store.add(val, path, params, body);
-
   res.send(result);
 };
