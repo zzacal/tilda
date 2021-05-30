@@ -6,13 +6,13 @@ export default class Server {
   express: express.Express = express();
   store: Store = new Store();
 
-  constructor() {
+  constructor(mockPath: string) {
     this.express.use(express.urlencoded({ extended: true }));
     this.express.use(express.json());
 
-    this.express.use(fetch(this.store));
+    this.express.use(fetch(this.store, mockPath));
 
-    this.express.post("/mock", mock(this.store));
+    this.express.post(mockPath, mock(this.store));
   }
 
   listen(port: number) {
