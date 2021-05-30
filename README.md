@@ -9,6 +9,7 @@ Some external dependencies are not stable within the scope of your tests. Tilda 
 ## How
 ### Start the service
 ```
+npm i && \
 npm start
 ```
 

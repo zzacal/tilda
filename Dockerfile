@@ -1,7 +1,7 @@
 FROM node:current-alpine
 ENV NODE_ENV=production
 WORKDIR /usr
-COPY ["package.json", "tsconfig.json", "./"]
+COPY ["package.json", "package-lock.json", "tsconfig.json", "./"]
 COPY src ./src
 RUN npm install
 RUN npm run build
