@@ -21,7 +21,7 @@ curl --location --request POST 'localhost:5111/mock' \
       "path": "/user",
       "params": {"id": "123"},
       "body": {},
-      "val": { "name": "Tim Gerald Reynolds" }
+      "val": { "name": "George Harrison" }
     }'
 ```
 
@@ -34,6 +34,6 @@ curl --location --request GET 'localhost:5111/user?id=123' \
 #### Response
 ```
 {
-    "name": "Tim Gerald Reynolds"
+    "name": "George Harrison"
 }
 ```
