@@ -28,8 +28,7 @@ curl --location --request POST 'localhost:5111/mock' \
 ### Tilda responds with val
 #### Request
 ```
-curl --location --request GET 'localhost:5111/user?id=123' \
---data-raw ''
+curl --location --request GET 'localhost:5111/user?id=123'
 ```
 #### Response
 ```
