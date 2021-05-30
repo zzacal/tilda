@@ -1,3 +1,5 @@
 import Server from "./server";
 
-new Server().listen(5111);
+const port = parseInt(process.env.PORT ?? "5111");
+
+new Server().listen(port);
