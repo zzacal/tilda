@@ -4,7 +4,8 @@
   "description": "A service for mocking services",
   "main": "dist/index.js",
   "scripts": {
-    "prebuild": "",
+    "lint": "eslint src/*/**.ts test/**/*.ts --fix",
+    "prebuild": "npm run lint",
     "build": "tsc",
     "prestart": "npm run build",
     "start": "node .",

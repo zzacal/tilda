@@ -19,11 +19,21 @@ npm start
 curl --location --request POST 'localhost:5111/mock' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-      "path": "/user",
-      "params": {"id": "123"},
-      "body": {},
-      "val": { "name": "George Harrison" }
-    }'
+    "request": {
+        "path": "/user",
+        "params": {
+            "id": "123"
+        },
+        "body": {}
+    },
+    "response": {
+        "type": "obj",
+        "status": "200",
+        "body": {
+            "name": "Marco Polo"
+        }
+    }
+}'
 ```
 
 ### Tilda responds with val
@@ -34,6 +44,6 @@ curl --location --request GET 'localhost:5111/user?id=123'
 #### Response
 ```
 {
-    "name": "George Harrison"
+    "name": "Marco Polo"
 }
 ```
