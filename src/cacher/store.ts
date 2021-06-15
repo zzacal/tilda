@@ -11,9 +11,9 @@ export default class Store {
 
   private getRecord(path: string, params?: any, body?: any) {
     return this.cache
-      .filter((r) => r.path === path)[0]
-      // .filter((r) => _.isEqual(r.params, params))
-      // .filter((r) => _.isEqual(r.body, body))
+      .filter((r) => r.path === path)
+      .filter((r) => _.isEqual(r.params, params))
+      .filter((r) => _.isEqual(r.body, body))[0]
   }
 
   add(setup: MockSetup): Record {
@@ -37,11 +37,6 @@ export default class Store {
   }
 
   get(path: string, params?: any, body?: any): MockResponse | undefined {
-    console.log(`path: ${path}`)
-    console.log(`params: ${JSON.stringify(body)}`)
-    console.log(`body: ${JSON.stringify(body)}`)
-    console.log(`cache:\n ${JSON.stringify(this.cache)}`)
-
     const result = this.getRecord(path, params, body);
 
     if (result) {
