@@ -1,13 +1,12 @@
 FROM node:current-alpine
-ENV NODE_ENV=production
 WORKDIR /usr
-COPY ["package.json", "package-lock.json", "tsconfig.json", "./"]
+COPY [".eslintrc.json", "package.json", "package-lock.json", "tsconfig.json", "./"]
 COPY src ./src
 RUN npm install
-RUN npm run build
+RUN npm run build:prod
 
-## this is stage two , where the app actually runs
-FROM node:12.17.0-alpine
+# this is stage two , where the app actually runs
+FROM node:lts-alpine
 WORKDIR /usr
 COPY package.json ./
 RUN npm install --only=production
