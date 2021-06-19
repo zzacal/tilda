@@ -7,6 +7,15 @@ Tilda mocks services by creating an in-memory store of responses that can be ret
 Some external dependencies are not stable within the scope of your tests. Tilda allows you to mock these dependencies.
 
 ## How
+### Start the service as a container
+```
+docker pull jizacal/tilda && \
+docker run \
+    --name=mocker \
+    -p 5111:5111 \
+    jizacal/tilda
+```
+
 ### Start the service
 ```
 npm i && \
