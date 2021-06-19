@@ -10,7 +10,8 @@
     "build:prod": "tsc",
     "prestart": "npm run build",
     "start": "node .",
-    "test": "jest --watch --coverage"
+    "test": "jest --watch --coverage",
+    "test:cicd": "jest --coverage --runInBand --detectOpenHandles --forceExit"
   },
   "author": "",
   "license": "ISC",
