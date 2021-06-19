@@ -42,7 +42,7 @@ export default class Store {
     if (result) {
       return result.response;
     } else {
-      console.log("Warning: No setup found. Mock it.", `
+      console.warn("Warning: No setup found. Mock it.", `
         curl --location --request POST 'localhost:5111/mock' \\
         --header 'Content-Type: application/json' \\
         --data-raw '{
