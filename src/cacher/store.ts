@@ -11,9 +11,9 @@ export default class Store {
 
   private getRecord(path: string, params?: any, body?: any) {
     return this.cache
-      .filter((r) => r.path === path)
-      .filter((r) => _.isEqual(r.params, params))
-      .filter((r) => _.isEqual(r.body, body))[0]
+      .filter((r) => r.path === path
+        && _.isEqual(r.params, params)
+        && _.isEqual(r.body, body))[0]
   }
 
   add(setup: MockSetup): Record {
@@ -23,11 +23,11 @@ export default class Store {
       params: request.params,
       body: request.body,
       response: response
-    }    
-    
+    }
+
     const result = this.getRecord(setup.request.path, setup.request.params, setup.request.body);
 
-    if(result) {
+    if (result) {
       result.response = setup.response;
     } else {
       this.cache.push(record)

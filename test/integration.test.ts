@@ -3,6 +3,8 @@ import Server from "../src/server";
 import { MockResponseType } from "../src/types/mockResponse";
 import { MockSetup } from "../src/types/mockSetup";
 
+jest.spyOn(global.console, 'log').mockImplementation(() => { return });
+
 describe("server", () => {
   const server = new Server("/mock");
   const app = server.express;
