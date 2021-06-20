@@ -13,4 +13,10 @@ RUN npm install --only=production
 COPY --from=0 /usr/dist .
 RUN npm install pm2 -g
 EXPOSE 5111
+
+# Do not run as root
+RUN addgroup -S localgroup
+RUN adduser -S localuser -G localgroup
+USER localuser
+
 CMD ["pm2-runtime","index.js"]

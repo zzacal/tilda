@@ -7,7 +7,7 @@ describe("cache store", () => {
   const path = "/";
   const params = "some params";
   const body = "some body";
-  jest.spyOn(global.console, 'warn').mockImplementation(()=>{});
+  jest.spyOn(global.console, 'warn').mockImplementation(() => { return });
   it("warns when no setup is found", () => {
     const noResponse = store.get(path, params, body);
     expect(console.warn).toBeCalled();
