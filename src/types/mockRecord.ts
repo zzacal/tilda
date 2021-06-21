@@ -1,6 +1,6 @@
 import { MockResponse } from './mockResponse'
 
-export type Record = {
+export type MockRecord = {
     path: string;
     params: any;
     body: any;

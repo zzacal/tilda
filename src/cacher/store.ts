@@ -1,12 +1,13 @@
 import * as _ from 'lodash'
 import { MockResponse } from '../types/mockResponse'
 import { MockSetup } from '../types/mockSetup'
-import { Record } from '../types/record'
+import { MockRecord } from '../types/mockRecord'
 
 export default class Store {
-  private cache: Record[] = [];
-  constructor() {
-    this.cache = []
+  private cache: MockRecord[] = [];
+  constructor(seed?: MockRecord[]) {
+    this.cache = seed ?? [];
+    console.log(`\n\ninitial cache\n${JSON.stringify(this.cache)}\n\n`);
   }
 
   private getRecord(path: string, params?: any, body?: any) {
@@ -16,7 +17,7 @@ export default class Store {
         && _.isEqual(r.body, body))[0]
   }
 
-  add(setup: MockSetup): Record {
+  add(setup: MockSetup): MockRecord {
     const { request, response } = setup
     const record = {
       path: request.path,
@@ -32,7 +33,6 @@ export default class Store {
     } else {
       this.cache.push(record)
     }
-
     return record
   }
 

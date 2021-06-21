@@ -1,12 +1,14 @@
 import express from 'express'
 import Store from './cacher/store'
 import { fetch, mock } from './handlers'
+import { MockRecord } from './types/mockRecord';
 
 export default class Server {
   express: express.Express = express();
-  store: Store = new Store();
+  store: Store;
 
-  constructor (mockPath: string) {
+  constructor (mockPath: string, seed?: MockRecord[]) {
+    this.store = new Store(seed);
     this.express.use(express.urlencoded({ extended: true }))
     this.express.use(express.json())
 
