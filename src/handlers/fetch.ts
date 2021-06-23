@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 import Store from '../cacher/store'
+import { notFoundTemplate } from '../messages/notfound'
 
 export const fetch =
   (store: Store, exclude: string) =>
@@ -12,7 +13,9 @@ export const fetch =
         if (mockResponse) {
           res.status(mockResponse.status).send(mockResponse.body)
         } else {
-          res.sendStatus(404)
+          const message = notFoundTemplate(path, params, body);
+          console.log(message);
+          res.status(404).send(message);
         }
       }
       return _next()
