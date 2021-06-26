@@ -9,7 +9,7 @@ export const notFoundTemplate = (path: string, params: any, body: any): string =
                 "body": ${JSON.stringify(body)}
             },
             "response": {
-                "type": "obj",
+                "contentType": "application/json",
                 "status": "200",
                 "body": {}
             }

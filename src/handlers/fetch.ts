@@ -11,10 +11,11 @@ export const fetch =
         const body = req.body
         const mockResponse = store.get(path, params, body)
         if (mockResponse) {
+          res.setHeader('Content-Type', mockResponse.contentType);
           res.status(mockResponse.status).send(mockResponse.body)
         } else {
           const message = notFoundTemplate(path, params, body);
-          console.log(message);
+          console.warn(message);
           res.status(404).send(message);
         }
       }
