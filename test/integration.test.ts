@@ -4,6 +4,7 @@ import { ContentType } from "../src/types/mockResponse";
 import { MockSetup } from "../src/types/mockSetup";
 
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
+jest.spyOn(global.console, "warn").mockImplementation(() => { return });
 
 describe("server", () => {
   const server = new Server("/mock");
@@ -49,7 +50,7 @@ describe("server", () => {
         expect(response.body.response).toEqual(jsonSetup.response);
         done();
       });
-    
+
     request(app)
       .post("/mock")
       .send(xmlSetup)
@@ -59,6 +60,57 @@ describe("server", () => {
         done();
       });
   });
+
+  it("server#fetch returns xml when response is xml", (done) => {
+    request(app)
+      .get(xmlPath)
+      .expect(200)
+      .then((response) => {
+        expect(response.text).toEqual(xmlSetup.response.body);
+        expect(response.headers["content-type"]).toContain(ContentType.textXml)
+        done();
+      });
+  });
+
+  it("can mock and return an html response", (done) => {
+    const path = "/html";
+    const setup = {
+      request: {
+        path: path,
+        params: {},
+        body: {},
+      },
+      response: {
+        contentType: ContentType.textHtml,
+        status: 200,
+        body: `<!DOCTYPE html>
+        <html lang="en">
+            <body>
+                <h1>Hello world</h1>
+                <p>This is a simple html<p>
+            </body>
+        </html>`
+      },
+    };
+
+    request(app)
+      .post("/mock")
+      .send(setup)
+      .expect(200)
+      .then((response) => {
+        expect(response.body.response).toEqual(setup.response);
+        done();
+      });
+
+    request(app)
+      .get(path)
+      .expect(200)
+      .then((response) => {
+        expect(response.text).toEqual(setup.response.body);
+        expect(response.headers["content-type"]).toContain(ContentType.textHtml)
+        done();
+      });
+  })
 
   it("server#fetch returns val with the right path, params, and body", (done) => {
     request(app)
@@ -73,7 +125,7 @@ describe("server", () => {
   });
 
   it("server#fetch returns empty response when val is not found", (done) => {
-    jest.spyOn(global.console, "warn").mockImplementation(() => {});
+    jest.spyOn(global.console, "warn").mockImplementation(() => { });
     request(app)
       .get(`${jsonPath}?id=NO_ID_HERE`)
       .set("Accept", "application/json")
@@ -84,18 +136,5 @@ describe("server", () => {
         done();
       });
   });
-
-  it("server#fetch returns xml when response is xml", (done) => {
-    jest.spyOn(global.console, "warn").mockImplementation(() => {});
-    request(app)
-      .get(xmlPath)
-      .expect(200)
-      .then((response) => {
-        console.log(`${JSON.stringify(response)}`);
-        expect(response.text).toEqual(xmlSetup.response.body);
-        expect(console.warn).toBeCalled();
-        done();
-      });
-  })
 
 });

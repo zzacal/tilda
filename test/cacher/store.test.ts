@@ -95,9 +95,38 @@ describe("cache store", () => {
         body: "<note>\n<to s=\"d\">Stokk</to>\n<from>Klimp</from>\n<heading>Reminder</heading>\n<body>You rock, yeah!</body>\n</note>",
       },
     };
-
+    
     store.add(setup);
     const response = store.get(xmlPath, {}, {});
     expect(response?.body).toBeDefined();
+  });
+  
+  it('can store an html response', () => {
+    const htmlPath = "html";
+    const setup = {
+      request: {
+        path: htmlPath,
+        params: {},
+        body: {},
+      },
+      response: {
+        contentType: ContentType.textHtml,
+        status: 200,
+        body: 
+         `<!DOCTYPE html>
+          <html lang="en">
+              <body>
+                  <h1>Hello world!</h1>
+                  <p>This is a test html page</p>
+              </body>
+          </html>`
+      },
+    };
+    
+    store.add(setup);
+    const result = store.get(htmlPath, {}, {});
+
+    expect(result?.contentType).toBe(ContentType.textHtml);
+    expect(result?.body).toBeDefined();
   });
 });
