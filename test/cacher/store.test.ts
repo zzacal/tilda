@@ -6,9 +6,9 @@ import { MockSetup } from "../../src/types/mockSetup";
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
 describe("cache store", () => {
   const store = new Store();
-  const path = "/";
-  const params = "some params";
-  const body = "some body";
+  const rootPath = "/";
+  const someParams = "some params";
+  const someBody = "some body";
 
   it("can be seeded", () => {
     const seed: MockRecord[] = [{ "path": "/", "params": "params", "body": "body", "response": { "contentType": ContentType.textPlain, "status": 200, "body": "some other body" } }]
@@ -18,16 +18,16 @@ describe("cache store", () => {
   })
 
   it("returns undefined when no setup is found", () => {
-    const noResponse = store.get(path, params, body);
+    const noResponse = store.get(rootPath, someParams, someBody);
     expect(noResponse).toBeUndefined();
   })
 
   it("can store text response", () => {
     const setupA: MockSetup = {
       request: {
-        path,
-        params,
-        body,
+        path: rootPath,
+        params: someParams,
+        body: someBody,
       },
       response: {
         contentType: ContentType.textPlain,
@@ -37,16 +37,16 @@ describe("cache store", () => {
     };
 
     store.add(setupA);
-    const responseA = store.get(path, params, body);
+    const responseA = store.get(rootPath, someParams, someBody);
     expect(responseA).toEqual(setupA.response);
   });
 
   it("can overwrite the response on a request", () => {
     const setupB: MockSetup = {
       request: {
-        path,
-        params,
-        body,
+        path: rootPath,
+        params: someParams,
+        body: someBody,
       },
       response: {
         contentType: ContentType.textPlain,
@@ -56,7 +56,27 @@ describe("cache store", () => {
     };
 
     store.add(setupB);
-    const responseB = store.get(path, params, body);
+    const responseB = store.get(rootPath, someParams, someBody);
+    expect(responseB).toEqual(setupB.response);
+  });
+
+  it("finds a request with undefined params and body", () => {
+    const path = "/undefined_bodies";
+    const setupB: MockSetup = {
+      request: {
+        path,
+        params: undefined,
+        body: undefined,
+      },
+      response: {
+        contentType: ContentType.textPlain,
+        status: 200,
+        body: "some other body",
+      },
+    };
+
+    store.add(setupB);
+    const responseB = store.get(path);
     expect(responseB).toEqual(setupB.response);
   });
 

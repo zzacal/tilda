@@ -10,7 +10,7 @@ export default class Store {
     console.log(`\n\ninitial cache\n${JSON.stringify(this.cache)}\n\n`);
   }
 
-  private getRecord(path: string, params?: any, body?: any) {
+  private getRecord(path: string, params: any, body: any) {
     return this.cache
       .filter((r) => r.path === path
         && _.isEqual(r.params, params)
@@ -21,8 +21,8 @@ export default class Store {
     const { request, response } = setup
     const record = {
       path: request.path,
-      params: request.params,
-      body: request.body,
+      params: request.params ?? {},
+      body: request.body ?? {},
       response: response
     }
 
@@ -36,7 +36,7 @@ export default class Store {
     return record
   }
 
-  get(path: string, params?: any, body?: any): MockResponse | undefined {
+  get(path: string, params: any = {}, body: any = {}): MockResponse | undefined {
     const result = this.getRecord(path, params, body);
 
     return result?.response;
