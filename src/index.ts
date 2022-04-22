@@ -9,7 +9,9 @@ let seed: any;
 try {
     seed = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
 } catch (err) {
-    console.warn(`Unable to seed: ${err.message}`);
+    if(err instanceof Error) {
+        console.warn(`Unable to seed: ${err.message}`);
+    }
 }
 
 new Server(mockPath, seed).listen(port);
