@@ -17,7 +17,7 @@ export default class Server {
     this.express.post(mockPath, mock(this.store))
   }
 
-  listen (port: number) {
+  listen (port: number): Server {
     this.express.listen(port, async () => {
       console.log(`listening on port ${port}`)
     })

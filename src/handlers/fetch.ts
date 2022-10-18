@@ -4,7 +4,7 @@ import { notFoundTemplate } from '../messages/notfound'
 
 export const fetch =
   (store: Store, exclude: string) =>
-    (req: Request, res: Response, _next: NextFunction) => {
+    (req: Request, res: Response, _next: NextFunction): void => {
       const path = req.path
       if (path !== exclude) {
         const params = req.query

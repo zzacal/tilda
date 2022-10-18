@@ -9,7 +9,7 @@ jest.spyOn(global.console, "warn").mockImplementation(() => { return });
 describe("server", () => {
   const server = new Server("/mock");
   const app = server.express;
-  const expressServer = server.listen(3000);
+  const expressServer = server.listen(8882);
   const jsonPath = "/user";
   const params = { id: "123" };
   const body = {};
@@ -125,6 +125,7 @@ describe("server", () => {
   });
 
   it("server#fetch returns empty response when val is not found", (done) => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     jest.spyOn(global.console, "warn").mockImplementation(() => { });
     request(app)
       .get(`${jsonPath}?id=NO_ID_HERE`)

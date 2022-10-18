@@ -7,7 +7,9 @@ Tilda mocks services by creating an in-memory store of responses that can be ret
 Some external dependencies are not stable within the scope of your tests. Tilda allows you to mock these dependencies.
 
 ## How
-### Start the service as a container
+### Start the service
+You can start the service as a container or as a local process.
+#### **as a container**
 ``` bash
 docker pull jizacal/tilda && \
 docker run \
@@ -16,14 +18,14 @@ docker run \
     jizacal/tilda
 ```
 
-### Start the service
+#### **as a local process**
 ``` bash
 npm i && \
 npm start
 ```
 
 ### Mock a call
-#### Request
+#### **Request**
 ``` bash
 curl --location --request POST 'localhost:5111/mock' \
 --header 'Content-Type: application/json' \
@@ -46,7 +48,7 @@ curl --location --request POST 'localhost:5111/mock' \
 ```
 
 ### Tilda responds with val
-#### Request
+#### **Request**
 ``` bash
 curl --location --request GET 'localhost:5111/user?id=123'
 ```
@@ -57,8 +59,12 @@ curl --location --request GET 'localhost:5111/user?id=123'
 }
 ```
 ### Seeding
-You can seed mocks by setting the variable `SEED` to your seed file or by placing the seed file in `/data/seed.json`.
-``` json
+You can seed mocks by placing the seed in the file `/data/seed.json`.
+
+Alternatively, name your seed file whatever you want and set the variable `SEED`
+
+Sample seed file:
+```json
 [
   {
     "path": "/user",
