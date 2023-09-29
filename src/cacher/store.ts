@@ -8,15 +8,17 @@ export default class Store {
   private cache: MockRecord[] = [];
   constructor(seed?: MockRecord[]) {
     this.cache = seed ?? [];
-    console.log(`\n\ninitial cache\n${JSON.stringify(this.cache)}\n\n`);
+    console.log(
+      `\n\ninitial cache\n${JSON.stringify(this.cache.map((m) => m.path))}\n\n`
+    );
   }
 
   private getRecord(path: string, params: any, body: any) {
     return this.cache.filter(
       (r) =>
         r.path === path &&
-        _.isEqual(r.params, params) &&
-        _.isEqual(r.body, body)
+        _.isMatch(params, r.params) &&
+        _.isMatch(body, r.body)
     )[0];
   }
 

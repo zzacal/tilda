@@ -149,4 +149,25 @@ describe("cache store", () => {
     expect(result?.contentType).toBe(ContentType.textHtml);
     expect(result?.body).toBeDefined();
   });
+
+
+  it("can get a response objects using partial match", () => {
+    const jsonPath = "/json";
+    const setup = {
+      request: {
+        path: jsonPath,
+        params: {},
+        body: { knownField: "known at setup" },
+      },
+      response: {
+        contentType: ContentType.textPlain,
+        status: 200,
+        body: { congratulations: "You found a partial match" },
+      },
+    };
+
+    store.add(setup);
+    const result = store.get(jsonPath, {}, { knownField: "known at setup", someDynamicField: "not known at setup" });
+    expect(result).toEqual(setup.response);
+  });
 });
