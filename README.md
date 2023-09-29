@@ -11,11 +11,11 @@ Some external dependencies are not stable within the scope of your tests. Tilda 
 You can start the service as a container or as a local process.
 #### **as a container**
 ``` bash
-docker pull jizacal/tilda && \
+docker pull ghcr.io/zzacal/tilda:latest && \
 docker run \
     --name=mocker \
     -p 5111:5111 \
-    jizacal/tilda
+    ghcr.io/zzacal/tilda
 ```
 
 #### **as a local process**
