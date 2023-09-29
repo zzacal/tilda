@@ -1,5 +1,10 @@
-export const notFoundTemplate = (path: string, params: any, body: any): string => {
-     return `Warning: No setup found. Mock it.
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+export const notFoundTemplate = (
+  path: string,
+  params: any,
+  body: any
+): string => {
+  return `Warning: No setup found. Mock it.
         curl --location --request POST 'localhost:5111/mock' \\
         --header 'Content-Type: application/json' \\
         --data-raw '{
@@ -14,4 +19,4 @@ export const notFoundTemplate = (path: string, params: any, body: any): string =
                 "body": {}
             }
         }'`;
-}
+};

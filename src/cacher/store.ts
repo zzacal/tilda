@@ -3,6 +3,7 @@ import { MockResponse } from '../types/mockResponse'
 import { MockSetup } from '../types/mockSetup'
 import { MockRecord } from '../types/mockRecord'
 
+/* eslint-disable  @typescript-eslint/no-explicit-any */
 export default class Store {
   private cache: MockRecord[] = [];
   constructor(seed?: MockRecord[]) {
@@ -11,32 +12,42 @@ export default class Store {
   }
 
   private getRecord(path: string, params: any, body: any) {
-    return this.cache
-      .filter((r) => r.path === path
-        && _.isEqual(r.params, params)
-        && _.isEqual(r.body, body))[0]
+    return this.cache.filter(
+      (r) =>
+        r.path === path &&
+        _.isEqual(r.params, params) &&
+        _.isEqual(r.body, body)
+    )[0];
   }
 
   add(setup: MockSetup): MockRecord {
-    const { request, response } = setup
+    const { request, response } = setup;
     const record = {
       path: request.path,
       params: request.params ?? {},
       body: request.body ?? {},
-      response: response
-    }
+      response: response,
+    };
 
-    const result = this.getRecord(setup.request.path, setup.request.params, setup.request.body);
+    const result = this.getRecord(
+      setup.request.path,
+      setup.request.params,
+      setup.request.body
+    );
 
     if (result) {
       result.response = setup.response;
     } else {
-      this.cache.push(record)
+      this.cache.push(record);
     }
-    return record
+    return record;
   }
 
-  get(path: string, params: any = {}, body: any = {}): MockResponse | undefined {
+  get(
+    path: string,
+    params: any = {},
+    body: any = {}
+  ): MockResponse | undefined {
     const result = this.getRecord(path, params, body);
 
     return result?.response;
