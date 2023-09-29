@@ -1,17 +1,20 @@
-import Server from './server';
-import fs  from 'fs';
+import { fromDir, fromFile } from "./seeding/seed-files";
+import Server from "./server";
+import { MockRecord } from "./types/mockRecord";
 
-const port = parseInt(process.env.PORT ?? '5111');
-const mockPath = process.env.MOCK_PATH ?? '/mock';
+const port = parseInt(process.env.PORT ?? "5111");
+const mockPath = process.env.MOCK_PATH ?? "/mock";
 
-const seedPath = process.env.SEED ?? '/data/seed.json';
-let seed: any;
+const seedPath = process.env.SEED ?? "/data/seed.json";
+const seedsDir = process.env.SEEDS_DIR ?? "/data/seeds/";
+
+let seed: MockRecord[] = [];
 try {
-    seed = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+  seed = [...fromFile(seedPath), ...fromDir(seedsDir)];
 } catch (err) {
-    if(err instanceof Error) {
-        console.warn(`Unable to seed: ${err.message}`);
-    }
+  if (err instanceof Error) {
+    console.warn(`Unable to seed: ${err.message}`);
+  }
 }
 
 new Server(mockPath, seed).listen(port);

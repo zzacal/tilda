@@ -82,3 +82,5 @@ Sample seed file:
   }
 ]
 ```
+
+You can combine seed files by storing seed json files in `/data/seeds/` or files in any directory set to the env `SEEDS_DIR` that matches the shape of the seed file above and has a `.json` extension.
