@@ -3,7 +3,7 @@ import Store from './cacher/store'
 import { fetch, mock } from './handlers'
 import { MockRecord } from './types/mockRecord';
 
-export default class Server {
+export default class TildaServer {
   express: express.Express = express();
   store: Store;
 
@@ -17,8 +17,8 @@ export default class Server {
     this.express.post(mockPath, mock(this.store))
   }
 
-  listen (port: number): Server {
-    this.express.listen(port, async () => {
+  listen (port: number): this {
+    this.express.listen(port, () => {
       console.log(`listening on port ${port}`)
     })
     return this

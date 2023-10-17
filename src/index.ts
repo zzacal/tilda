@@ -1,5 +1,5 @@
 import { fromDir, fromFile } from "./seeding/seed-files";
-import Server from "./server";
+import TildaServer from "./server";
 import { MockRecord } from "./types/mockRecord";
 
 const port = parseInt(process.env.PORT ?? "5111");
@@ -17,4 +17,4 @@ try {
   }
 }
 
-new Server(mockPath, seed).listen(port);
+new TildaServer(mockPath, seed).listen(port);
