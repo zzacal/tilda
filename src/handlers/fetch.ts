@@ -5,19 +5,20 @@ import { notFoundTemplate } from '../messages/notfound'
 export const fetch =
   (store: Store, exclude: string) =>
     (req: Request, res: Response, _next: NextFunction): void => {
-      const path = req.path
-      if (path !== exclude) {
-        const params = req.query
-        const body = req.body
-        const mockResponse = store.get(path, params, body)
-        if (mockResponse) {
-          res.setHeader('Content-Type', mockResponse.contentType);
-          res.status(mockResponse.status).send(mockResponse.body)
-        } else {
-          const message = notFoundTemplate(path, params, body);
-          console.warn(message);
-          res.status(404).send(message);
-        }
+      if (req.path === exclude) {
+        return _next()
       }
-      return _next()
+
+      const mockResponse = store.get(req.path, req.query, req.body);
+      if (mockResponse) {
+        mockResponse.headers
+        for (const key in mockResponse.headers) {
+          res.setHeader(key, mockResponse.headers[key]);
+        }
+        res.status(mockResponse.status).send(mockResponse.body);
+      } else {
+        const message = notFoundTemplate(req.path, req.query, req.body);
+        console.warn(message);
+        res.status(404).send(message);
+      }
     }

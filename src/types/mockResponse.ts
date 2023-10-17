@@ -8,7 +8,10 @@ export enum ContentType {
 }
 
 export type MockResponse = {
-  contentType: ContentType;
   status: number;
   body: any;
+  headers: null | {
+    [key: string]: string;
+    "Content-Type": ContentType
+  };
 };

@@ -11,7 +11,8 @@ describe("cache store", () => {
   const someBody = "some body";
 
   it("can be seeded", () => {
-    const seed: MockRecord[] = [{ "path": "/", "params": "params", "body": "body", "response": { "contentType": ContentType.textPlain, "status": 200, "body": "some other body" } }]
+    const seed: MockRecord[] = [{ "path": "/", "params": "params", "body": "body", "response": { 
+      "headers": {"Content-Type": ContentType.applicationJson, "hkey": "hval"}, "status": 200, "body": "some other body" } }]
     const seededStore = new Store(seed);
     const result = seededStore.get("/", "params", "body");
     expect(result?.body).toBe("some other body")
@@ -30,7 +31,7 @@ describe("cache store", () => {
         body: someBody,
       },
       response: {
-        contentType: ContentType.textPlain,
+        headers: { "Content-Type": ContentType.applicationJson, hkey: "hval" },
         status: 200,
         body: "initial body",
       },
@@ -49,7 +50,7 @@ describe("cache store", () => {
         body: someBody,
       },
       response: {
-        contentType: ContentType.textPlain,
+        headers: { "Content-Type": ContentType.applicationJson, hkey: "hval" },
         status: 200,
         body: "some other body",
       },
@@ -69,7 +70,7 @@ describe("cache store", () => {
         body: undefined,
       },
       response: {
-        contentType: ContentType.textPlain,
+        headers: { "Content-Type": ContentType.applicationJson, hkey: "hval" },
         status: 200,
         body: "some other body",
       },
@@ -82,16 +83,16 @@ describe("cache store", () => {
 
   it("can store a response objects", () => {
     const jsonPath = "/json"
-    const setup = {
+    const setup: MockSetup = {
       request: {
         path: jsonPath,
         params: {},
         body: {},
       },
       response: {
-        contentType: ContentType.textPlain,
+        headers: { "Content-Type": ContentType.applicationJson, hkey: "hval" },
         status: 200,
-        body: { "Style": { "Dark": "Sleek", "Types": ["Glove", "Shrowd"] } },
+        body: { Style: { Dark: "Sleek", Types: ["Glove", "Shrowd"] } },
       },
     };
 
@@ -103,16 +104,16 @@ describe("cache store", () => {
 
   it("can store a xml response", () => {
     const xmlPath = "/xml";
-    const setup = {
+    const setup: MockSetup = {
       request: {
         path: xmlPath,
         params: {},
         body: {},
       },
       response: {
-        contentType: ContentType.textPlain,
+        headers: { "Content-Type": ContentType.textXml, hkey: "hval" },
         status: 200,
-        body: "<note>\n<to s=\"d\">Stokk</to>\n<from>Klimp</from>\n<heading>Reminder</heading>\n<body>You rock, yeah!</body>\n</note>",
+        body: '<note>\n<to s="d">Stokk</to>\n<from>Klimp</from>\n<heading>Reminder</heading>\n<body>You rock, yeah!</body>\n</note>',
       },
     };
     
@@ -123,44 +124,43 @@ describe("cache store", () => {
   
   it('can store an html response', () => {
     const htmlPath = "html";
-    const setup = {
+    const setup: MockSetup = {
       request: {
         path: htmlPath,
         params: {},
         body: {},
       },
       response: {
-        contentType: ContentType.textHtml,
+        headers: { "Content-Type": ContentType.textHtml, hkey: "hval" },
         status: 200,
-        body: 
-         `<!DOCTYPE html>
+        body: `<!DOCTYPE html>
           <html lang="en">
               <body>
                   <h1>Hello world!</h1>
                   <p>This is a test html page</p>
               </body>
-          </html>`
+          </html>`,
       },
     };
     
     store.add(setup);
     const result = store.get(htmlPath, {}, {});
 
-    expect(result?.contentType).toBe(ContentType.textHtml);
+    expect(result?.headers?.["Content-Type"]).toBe(ContentType.textHtml);
     expect(result?.body).toBeDefined();
   });
 
 
   it("can get a response objects using partial match", () => {
     const jsonPath = "/json";
-    const setup = {
+    const setup: MockSetup = {
       request: {
         path: jsonPath,
         params: {},
         body: { knownField: "known at setup" },
       },
       response: {
-        contentType: ContentType.textPlain,
+        headers: { "Content-Type": ContentType.applicationJson, hkey: "hval" },
         status: 200,
         body: { congratulations: "You found a partial match" },
       },

@@ -1,8 +1,9 @@
 #!/bin/bash
+docker build -t tilda:dev . &&
 docker stop mocker|| true &&
 docker container rm mocker|| true &&
-docker build -t tilda:dev . &&
-docker run -d \
-    --name=mocker\
-    -p 5111:5111 \
-    tilda:dev
+docker run \
+  -v ./seeds:/data/seeds/ \
+  --name=mocker\
+  -p 5111:5111 \
+  tilda:dev

@@ -20,9 +20,9 @@ describe("server", () => {
       body,
     },
     response: {
-      contentType: ContentType.applicationJson,
       status: 200,
       body: { username: "Mitch Hedberg" },
+      headers: {"Content-Type": ContentType.applicationJson, "hkey": "hval"},
     },
   };
   const xmlPath = "/xml";
@@ -33,9 +33,9 @@ describe("server", () => {
       body: {},
     },
     response: {
-      contentType: ContentType.textXml,
       status: 200,
-      body: "<note>\n<to s=\"d\">Stokk</to>\n<from>Klimp</from>\n<heading>Reminder</heading>\n<body>You rock, yeah!</body>\n</note>",
+      body: '<note>\n<to s="d">Stokk</to>\n<from>Klimp</from>\n<heading>Reminder</heading>\n<body>You rock, yeah!</body>\n</note>',
+      headers: { "Content-Type": ContentType.textXml, "hkey": "hval" },
     },
   };
 
@@ -67,7 +67,8 @@ describe("server", () => {
       .expect(200)
       .then((response) => {
         expect(response.text).toEqual(xmlSetup.response.body);
-        expect(response.headers["content-type"]).toContain(ContentType.textXml)
+        expect(response.headers["content-type"]).toContain(ContentType.textXml);
+        expect(response.headers["hkey"]).toContain("hval");
         done();
       });
   });
