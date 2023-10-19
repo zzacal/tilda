@@ -1,15 +1,21 @@
 # Tilda
 
 ## What
+
 Tilda mocks services by creating an in-memory store of responses that can be retrieved by combining the path, params, and body of a request.
 
 ## Why
+
 Some external dependencies are not stable within the scope of your tests. Tilda allows you to mock these dependencies.
 
 ## How
+
 ### Start the service
+
 You can start the service as a container or as a local process.
+
 #### **as a container**
+
 ``` bash
 docker pull ghcr.io/zzacal/tilda:latest && \
 docker run \
@@ -19,13 +25,14 @@ docker run \
 ```
 
 #### **as a local process**
+
 ``` bash
 npm i && \
 npm start
 ```
 
 ### Mock a call
-#### **Request**
+
 ``` bash
 curl --location --request POST 'localhost:5111/mock' \
 --header 'Content-Type: application/json' \
@@ -42,28 +49,39 @@ curl --location --request POST 'localhost:5111/mock' \
         "status": "200",
         "body": {
             "name": "Marco Polo"
+        },
+        "headers": {
+          "Auth": "Someheader",
+          "Content-Type": "application/json"
         }
     }
 }'
 ```
 
 ### Tilda responds with val
-#### **Request**
+
+#### Request
+
 ``` bash
 curl --location --request GET 'localhost:5111/user?id=123'
 ```
-#### Response
+
+#### Result
+
 ``` json
 {
     "name": "Marco Polo"
 }
 ```
+
 ### Seeding
+
 You can seed mocks by placing the seed in the file `/data/seed.json`.
 
 Alternatively, name your seed file whatever you want and set the variable `SEED`
 
 Sample seed file:
+
 ```json
 [
   {
@@ -77,6 +95,10 @@ Sample seed file:
       "status": "200",
       "body": {
         "name": "Marco Polo"
+      },
+      "headers": {
+        "Auth": "Someheader",
+        "Content-Type": "application/json"
       }
     }
   }
