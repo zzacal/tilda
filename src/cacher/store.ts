@@ -1,7 +1,6 @@
 import * as _ from 'lodash'
-import { MockResponse } from '../types/mockResponse'
 import { MockSetup } from '../types/mockSetup'
-import { MockRecord } from '../types/mockRecord'
+import { MockBody, MockParams, MockRecord, MockResponse } from '../types/mockRecord'
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 export default class Store {
@@ -13,13 +12,23 @@ export default class Store {
     );
   }
 
-  private getRecord(path: string, params: any, body: any) {
+  private getRecord(path: string, params: MockParams, body: MockBody) {
     return this.cache.filter(
       (r) =>
         r.path === path &&
-        _.isMatch(params, r.params) &&
-        _.isMatch(body, r.body)
+        this.match(params, r.params) &&
+        this.match(body, r.body)
     )[0];
+  }
+
+  private match(a: MockParams | MockBody, b: MockParams | MockBody): boolean {
+    if( typeof a === "string" && typeof b === "string") {
+      return a === b;
+    } else if (typeof a === "object" && typeof b === "object") {
+      return _.isMatch(a, b);
+    } else {
+      return false;
+    }
   }
 
   add(setup: MockSetup): MockRecord {
@@ -47,15 +56,11 @@ export default class Store {
 
   get(
     path: string,
-    params: any = {},
-    body: any = {}
+    params: object = {},
+    body: string | object = {}
   ): MockResponse | undefined {
     const result = this.getRecord(path, params, body);
 
     return result?.response;
   }
-
-  // update(response: any, path: string, params?: any, body?: any): void {}
-
-  // delete(path: string, params?: any, body?: any) {}
 }

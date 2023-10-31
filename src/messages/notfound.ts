@@ -1,8 +1,10 @@
+import { MockBody, MockParams } from "../types/mockRecord";
+
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 export const notFoundTemplate = (
   path: string,
-  params: any,
-  body: any
+  params: MockParams,
+  body: MockBody
 ): string => {
   return `Warning: No setup found. Mock it.
         curl --location --request POST 'localhost:5111/mock' \\

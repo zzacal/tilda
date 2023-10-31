@@ -1,20 +1,19 @@
 import Store from "../../src/cacher/store";
-import { MockRecord } from "../../src/types/mockRecord";
-import { ContentType } from "../../src/types/mockResponse";
+import { ContentType, MockRecord } from "../../src/types/mockRecord";
 import { MockSetup } from "../../src/types/mockSetup";
 
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
 describe("cache store", () => {
   const store = new Store();
   const rootPath = "/";
-  const someParams = "some params";
+  const someParams = {theParams: "some params"};
   const someBody = "some body";
 
   it("can be seeded", () => {
-    const seed: MockRecord[] = [{ "path": "/", "params": "params", "body": "body", "response": { 
+    const seed: MockRecord[] = [{ "path": "/", "params": {type: "params"}, "body": "body", "response": { 
       "headers": {"Content-Type": ContentType.applicationJson, "hkey": "hval"}, "status": 200, "body": "some other body" } }]
     const seededStore = new Store(seed);
-    const result = seededStore.get("/", "params", "body");
+    const result = seededStore.get("/", {type: "params"}, "body");
     expect(result?.body).toBe("some other body")
   })
 
@@ -92,14 +91,13 @@ describe("cache store", () => {
       response: {
         headers: { "Content-Type": ContentType.applicationJson, hkey: "hval" },
         status: 200,
-        body: { Style: { Dark: "Sleek", Types: ["Glove", "Shrowd"] } },
+        body: { "Style": { "Dark": "Sleek", "Types": ["Glove", "Shrowd"] } },
       },
     };
 
     store.add(setup);
     const result = store.get(jsonPath, {}, {});
-    expect(result?.body?.Style?.Dark).toEqual("Sleek");
-    expect(result?.body?.Style?.Types?.length).toBe(2);
+    expect(result?.body).toEqual(setup.response.body);
   })
 
   it("can store a xml response", () => {

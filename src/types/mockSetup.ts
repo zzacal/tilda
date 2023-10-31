@@ -1,5 +1,4 @@
-import { MockRequest } from './mockRequest'
-import { MockResponse } from './mockResponse'
+import { MockRequest, MockResponse } from "./mockRecord"
 
 export type MockSetup = {
     request: MockRequest,
