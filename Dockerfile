@@ -1,4 +1,4 @@
-FROM node:current-alpine
+FROM node:lts-alpine
 WORKDIR /usr
 COPY [".eslintrc.json", "package.json", "package-lock.json", "tsconfig.json", "./"]
 COPY src ./src
