@@ -1,6 +1,5 @@
 import Store from "../../src/cacher/store";
 import { ContentType, MockRecord } from "../../src/types/mockRecord";
-import { MockSetup } from "../../src/types/mockSetup";
 
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
 describe("cache store", () => {
@@ -10,8 +9,11 @@ describe("cache store", () => {
   const someBody = "some body";
 
   it("can be seeded", () => {
-    const seed: MockRecord[] = [{ "path": "/", "params": {type: "params"}, "body": "body", "response": { 
-      "headers": {"Content-Type": ContentType.applicationJson, "hkey": "hval"}, "status": 200, "body": "some other body" } }]
+    const seed: MockRecord[] = [{ 
+      "request": {"path": "/", "params": {type: "params"}, "body": "body", },
+      "response": {
+        "headers": {"Content-Type": ContentType.applicationJson, "hkey": "hval"}, "status": 200, "body": "some other body"
+      } }]
     const seededStore = new Store(seed);
     const result = seededStore.get("/", {type: "params"}, "body");
     expect(result?.body).toBe("some other body")
@@ -23,7 +25,7 @@ describe("cache store", () => {
   })
 
   it("can store text response", () => {
-    const setupA: MockSetup = {
+    const setupA: MockRecord = {
       request: {
         path: rootPath,
         params: someParams,
@@ -42,7 +44,7 @@ describe("cache store", () => {
   });
 
   it("can overwrite the response on a request", () => {
-    const setupB: MockSetup = {
+    const setupB: MockRecord = {
       request: {
         path: rootPath,
         params: someParams,
@@ -62,7 +64,7 @@ describe("cache store", () => {
 
   it("finds a request with undefined params and body", () => {
     const path = "/undefined_bodies";
-    const setupB: MockSetup = {
+    const setupB: MockRecord = {
       request: {
         path,
         params: undefined,
@@ -82,7 +84,7 @@ describe("cache store", () => {
 
   it("can store a response objects", () => {
     const jsonPath = "/json"
-    const setup: MockSetup = {
+    const setup: MockRecord = {
       request: {
         path: jsonPath,
         params: {},
@@ -102,7 +104,7 @@ describe("cache store", () => {
 
   it("can store a xml response", () => {
     const xmlPath = "/xml";
-    const setup: MockSetup = {
+    const setup: MockRecord = {
       request: {
         path: xmlPath,
         params: {},
@@ -122,7 +124,7 @@ describe("cache store", () => {
   
   it('can store an html response', () => {
     const htmlPath = "html";
-    const setup: MockSetup = {
+    const setup: MockRecord = {
       request: {
         path: htmlPath,
         params: {},
@@ -151,7 +153,7 @@ describe("cache store", () => {
 
   it("can get a response objects using partial match", () => {
     const jsonPath = "/json";
-    const setup: MockSetup = {
+    const setup: MockRecord = {
       request: {
         path: jsonPath,
         params: {},

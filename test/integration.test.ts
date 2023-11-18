@@ -1,7 +1,6 @@
 import request from "supertest";
 import Server from "../src/server";
-import { MockSetup } from "../src/types/mockSetup";
-import { ContentType } from "../src/types/mockRecord";
+import { ContentType, MockRecord } from "../src/types/mockRecord";
 
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
 jest.spyOn(global.console, "warn").mockImplementation(() => { return });
@@ -13,7 +12,7 @@ describe("server", () => {
   const jsonPath = "/user";
   const params = { id: "123" };
   const body = {};
-  const jsonSetup: MockSetup = {
+  const jsonSetup: MockRecord = {
     request: {
       path: jsonPath,
       params,

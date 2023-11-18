@@ -1,5 +1,6 @@
-export type MockRecord = MockRequest & {
+export type MockRecord = {
   response: MockResponse;
+  request: MockRequest;
 };
 
 export enum ContentType {

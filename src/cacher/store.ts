@@ -1,5 +1,4 @@
 import * as _ from 'lodash'
-import { MockSetup } from '../types/mockSetup'
 import { MockBody, MockParams, MockRecord, MockResponse } from '../types/mockRecord'
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
@@ -8,16 +7,16 @@ export default class Store {
   constructor(seed?: MockRecord[]) {
     this.cache = seed ?? [];
     console.log(
-      `\n\ninitial cache\n${JSON.stringify(this.cache.map((m) => m.path))}\n\n`
+      `\n\ninitial cache\n${JSON.stringify(this.cache.map((m) => m.request.path))}\n\n`
     );
   }
 
   private getRecord(path: string, params: MockParams, body: MockBody) {
     return this.cache.filter(
       (r) =>
-        r.path === path &&
-        this.match(params, r.params) &&
-        this.match(body, r.body)
+        r.request.path === path &&
+        this.match(params, r.request.params) &&
+        this.match(body, r.request.body)
     )[0];
   }
 
@@ -31,13 +30,15 @@ export default class Store {
     }
   }
 
-  add(setup: MockSetup): MockRecord {
+  add(setup: MockRecord): MockRecord {
     const { request, response } = setup;
-    const record = {
-      path: request.path,
-      params: request.params ?? {},
-      body: request.body ?? {},
-      response: response,
+    const record: MockRecord = {
+      response,
+      request: {
+        path: request.path,
+        params: request.params ?? {},
+        body: request.body ?? {},
+      }
     };
 
     const result = this.getRecord(
