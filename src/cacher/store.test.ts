@@ -1,5 +1,5 @@
-import Store from "../../src/cacher/store";
-import { ContentType, MockRecord } from "../../src/types/mockRecord";
+import { MockRecord, ContentType } from "../types/mockRecord";
+import Store from "./store";
 
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
 describe("cache store", () => {

@@ -1,6 +1,6 @@
 import request from "supertest";
-import Server from "../src/server";
-import { ContentType, MockRecord } from "../src/types/mockRecord";
+import Server from "./server";
+import { ContentType, MockRecord } from "./types/mockRecord";
 
 jest.spyOn(global.console, 'log').mockImplementation(() => { return });
 jest.spyOn(global.console, "warn").mockImplementation(() => { return });

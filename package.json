@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "SEEDS_DIR=./documentation/sample-seeds nodemon ./src/index.ts",
-    "lint": "eslint src/*/**.ts test/**/*.ts --fix",
+    "lint": "eslint src/*/**.ts --fix",
     "prebuild": "npm run lint",
     "build": "tsc",
     "build:prod": "tsc",
