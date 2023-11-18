@@ -1,0 +1,11 @@
+version: '3.3'
+services:
+  tilda:
+    volumes:
+      - ../sample-seeds:/data/seeds/
+    container_name: user-tilda
+    ports:
+      - '8110:8110'
+    environment:
+      - PORT=8110
+    image: ghcr.io/zzacal/tilda:v4.0.0-alpha
