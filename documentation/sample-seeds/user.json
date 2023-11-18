@@ -1,0 +1,20 @@
+[
+  {
+    "request": {
+      "path": "/user/007",
+      "body": {},
+      "params": {"secret": "true"}
+    },
+    "response": {
+      "body": {
+        "lastName:": "Bond",
+        "firstName": "James",
+        "license": "toKill"
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "status": 200
+    }
+  }
+]
