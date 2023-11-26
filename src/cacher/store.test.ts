@@ -1,14 +1,15 @@
+import { vi, test, describe, expect } from "vitest";
 import { MockRecord, ContentType } from "../types/mockRecord";
 import Store from "./store";
 
-jest.spyOn(global.console, 'log').mockImplementation(() => { return });
+vi.spyOn(global.console, 'log').mockImplementation(() => { return });
 describe("cache store", () => {
   const store = new Store();
   const rootPath = "/";
   const someParams = {theParams: "some params"};
   const someBody = "some body";
 
-  it("can be seeded", () => {
+  test("can be seeded", () => {
     const seed: MockRecord[] = [{ 
       "request": {"path": "/", "params": {type: "params"}, "body": "body", },
       "response": {
@@ -19,12 +20,12 @@ describe("cache store", () => {
     expect(result?.body).toBe("some other body")
   })
 
-  it("returns undefined when no setup is found", () => {
+  test("returns undefined when no setup is found", () => {
     const noResponse = store.get(rootPath, someParams, someBody);
     expect(noResponse).toBeUndefined();
   })
 
-  it("can store text response", () => {
+  test("can store text response", () => {
     const setupA: MockRecord = {
       request: {
         path: rootPath,
@@ -43,7 +44,7 @@ describe("cache store", () => {
     expect(responseA).toEqual(setupA.response);
   });
 
-  it("can overwrite the response on a request", () => {
+  test("can overwrite the response on a request", () => {
     const setupB: MockRecord = {
       request: {
         path: rootPath,
@@ -62,7 +63,7 @@ describe("cache store", () => {
     expect(responseB).toEqual(setupB.response);
   });
 
-  it("finds a request with undefined params and body", () => {
+  test("finds a request with undefined params and body", () => {
     const path = "/undefined_bodies";
     const setupB: MockRecord = {
       request: {
@@ -82,7 +83,7 @@ describe("cache store", () => {
     expect(responseB).toEqual(setupB.response);
   });
 
-  it("can store a response objects", () => {
+  test("can store a response objects", () => {
     const jsonPath = "/json"
     const setup: MockRecord = {
       request: {
@@ -102,7 +103,7 @@ describe("cache store", () => {
     expect(result?.body).toEqual(setup.response.body);
   })
 
-  it("can store a xml response", () => {
+  test("can store a xml response", () => {
     const xmlPath = "/xml";
     const setup: MockRecord = {
       request: {
@@ -122,7 +123,7 @@ describe("cache store", () => {
     expect(response?.body).toBeDefined();
   });
   
-  it('can store an html response', () => {
+  test('can store an html response', () => {
     const htmlPath = "html";
     const setup: MockRecord = {
       request: {
@@ -151,7 +152,7 @@ describe("cache store", () => {
   });
 
 
-  it("can get a response objects using partial match", () => {
+  test("can get a response objects using partial match", () => {
     const jsonPath = "/json";
     const setup: MockRecord = {
       request: {
