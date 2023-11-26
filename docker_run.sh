@@ -1,7 +1,8 @@
 #!/bin/bash
-docker build -t tilda:dev . &&
 docker stop mocker|| true &&
 docker container rm mocker|| true &&
+docker image rm tilda:dev || true &&
+docker build -t tilda:dev . &&
 docker run \
   -v ./seeds:/data/seeds/ \
   --name=mocker\

@@ -1,17 +1,18 @@
-FROM node:lts-alpine
+# builds the application
+FROM node:21.1-alpine as build
 WORKDIR /usr
 COPY [".eslintrc.json", "package.json", "package-lock.json", "tsconfig.json", "./"]
 COPY src ./src
-RUN npm install
+RUN npm ci
 RUN npm run build:prod
 
-# this is stage two , where the app actually runs
-FROM node:lts-alpine
+# outputs the production app
+FROM node:21.1-alpine as output
 WORKDIR /usr
-COPY package.json ./
-RUN npm install --only=production
-COPY --from=0 /usr/dist .
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 RUN npm install pm2 -g
+COPY --from=build /usr/dist ./
 EXPOSE 5111
 
 # Do not run as root
