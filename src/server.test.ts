@@ -1,9 +1,11 @@
+import { expect, test, describe, vi, beforeAll } from 'vitest'
+
 import request from "supertest";
 import Server from "./server";
 import { ContentType, MockRecord } from "./types/mockRecord";
 
-jest.spyOn(global.console, 'log').mockImplementation(() => { return });
-jest.spyOn(global.console, "warn").mockImplementation(() => { return });
+vi.spyOn(global.console, 'log').mockImplementation(() => { return });
+vi.spyOn(global.console, "warn").mockImplementation(() => { return });
 
 describe("server", () => {
   const server = new Server("/mock");
@@ -38,7 +40,7 @@ describe("server", () => {
     },
   };
 
-  beforeAll((done) => {
+  beforeAll(() => new Promise((done) => {
     expect(expressServer).not.toBe(null);
 
     request(app)
@@ -58,9 +60,9 @@ describe("server", () => {
         expect(response.body.response).toEqual(xmlSetup.response);
         done();
       });
-  });
+  }));
 
-  it("server#fetch returns xml when response is xml", (done) => {
+  test("server#fetch returns xml when response is xml", () => new Promise<void>((done) => {
     request(app)
       .get(xmlPath)
       .expect(200)
@@ -70,9 +72,9 @@ describe("server", () => {
         expect(response.headers["hkey"]).toContain("hval");
         done();
       });
-  });
+  }));
 
-  it("can mock and return an html response", (done) => {
+  test("can mock and return an html response", () => new Promise<void>((done) => {
     const path = "/html";
     const setup = {
       request: {
@@ -110,9 +112,9 @@ describe("server", () => {
         expect(response.headers["content-type"]).toContain(ContentType.textHtml)
         done();
       });
-  })
+  }));
 
-  it("server#fetch returns val with the right path, params, and body", (done) => {
+  test("server#fetch returns val with the right path, params, and body", () => new Promise<void>((done) => {
     request(app)
       .get(`${jsonPath}?id=123`)
       .set("Accept", "application/json")
@@ -122,11 +124,11 @@ describe("server", () => {
         expect(response.body).toEqual(jsonSetup.response.body);
         done();
       });
-  });
+  }));
 
-  it("server#fetch returns empty response when val is not found", (done) => {
+  test("server#fetch returns empty response when val is not found", () => new Promise<void>((done) => {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
-    jest.spyOn(global.console, "warn").mockImplementation(() => { });
+    vi.spyOn(global.console, "warn").mockImplementation(() => { });
     request(app)
       .get(`${jsonPath}?id=NO_ID_HERE`)
       .set("Accept", "application/json")
@@ -136,6 +138,6 @@ describe("server", () => {
         expect(console.warn).toBeCalled();
         done();
       });
-  });
+  }))
 
 });
