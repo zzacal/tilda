@@ -11,7 +11,6 @@ export const fetch =
 
       const mockResponse = store.get(req.path, req.query, req.body);
       if (mockResponse) {
-        mockResponse.headers
         for (const key in mockResponse.headers) {
           res.setHeader(key, mockResponse.headers[key]);
         }

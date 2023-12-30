@@ -1,6 +1,5 @@
 import { MockBody, MockParams } from "../types/mockRecord";
 
-/* eslint-disable  @typescript-eslint/no-explicit-any */
 export const notFoundTemplate = (
   path: string,
   params: MockParams,
