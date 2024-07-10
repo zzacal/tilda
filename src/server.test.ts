@@ -62,7 +62,7 @@ describe("server", () => {
       });
   }));
 
-  test("server#fetch returns xml when response is xml", () => new Promise<void>((done) => {
+  test("fetch returns xml when response is xml", () => new Promise<void>((done) => {
     request(app)
       .get(xmlPath)
       .expect(200)
@@ -114,7 +114,7 @@ describe("server", () => {
       });
   }));
 
-  test("server#fetch returns val with the right path, params, and body", () => new Promise<void>((done) => {
+  test("fetch returns val with the right path, params, and body", () => new Promise<void>((done) => {
     request(app)
       .get(`${jsonPath}?id=123`)
       .set("Accept", "application/json")
@@ -126,7 +126,7 @@ describe("server", () => {
       });
   }));
 
-  test("server#fetch returns empty response when val is not found", () => new Promise<void>((done) => {
+  test("fetch returns empty response when val is not found", () => new Promise<void>((done) => {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     vi.spyOn(global.console, "warn").mockImplementation(() => { });
     request(app)
@@ -140,4 +140,36 @@ describe("server", () => {
       });
   }))
 
+  test("fetch is delayed when delay is set", () => new Promise<void>((done) => {
+
+    request(app)
+      .post("/mock")
+      .send({
+        request: {
+          path: "/delayed",
+          params: {},
+          body: {},
+        },
+        response: {
+          status: 200,
+          body: "I'm delayed",
+          headers: { "Content-Type": ContentType.textXml, "hkey": "hval" },
+          delay: 50,
+        },
+      })
+      .expect(200)
+      .then((response) => {
+        expect(response.body).toMatchObject({"response": {"delay": 50}});
+      });
+
+    request(app)
+      .get("/delayed")
+      .expect(200)
+      .then((response) => {
+        expect(response.text).toEqual("I'm delayed");
+        expect(response.headers["content-type"]).toContain(ContentType.textXml);
+        expect(response.headers["hkey"]).toContain("hval");
+        done();
+      });
+  }));
 });

@@ -3,6 +3,24 @@
     "request": {
       "path": "/user/007",
       "body": {},
+      "params": {}
+    },
+    "response": {
+      "body": {
+        "lastName:": "Bond",
+        "firstName": "James",
+        "license": "toDrive"
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "status": 200
+    }
+  },
+  {
+    "request": {
+      "path": "/user/007",
+      "body": {},
       "params": {"secret": "true"}
     },
     "response": {
@@ -15,6 +33,25 @@
         "Content-Type": "application/json"
       },
       "status": 200
+    }
+  },
+  {
+    "request": {
+      "path": "/delayed",
+      "body": {},
+      "params": {}
+    },
+    "response": {
+      "body": {
+        "lastName:": "Bond",
+        "firstName": "James",
+        "license": "toDelay"
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "status": 200,
+      "delay": 30000
     }
   }
 ]

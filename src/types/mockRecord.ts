@@ -33,4 +33,5 @@ export type MockResponse = {
   status: number;
   body: MockBody;
   headers: MockHeaders;
+  delay?: number;
 };

@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response } from 'express'
 import Store from '../cacher/store'
 import { notFoundTemplate } from '../messages/notfound'
+import delay from '../delay'
 
 export const fetch =
   (store: Store, exclude: string) =>
-    (req: Request, res: Response, _next: NextFunction): void => {
+    async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
       if (req.path === exclude) {
         return _next()
       }
@@ -13,6 +14,9 @@ export const fetch =
       if (mockResponse) {
         for (const key in mockResponse.headers) {
           res.setHeader(key, mockResponse.headers[key]);
+        }
+        if(mockResponse.delay != null) {
+          await delay(mockResponse.delay);
         }
         res.status(mockResponse.status).send(mockResponse.body);
       } else {
