@@ -17,7 +17,7 @@
   "author": "Zac Zacal",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0",
+    "express": "^5.2.0",
     "lodash": "^4.17.21"
   },
   "devDependencies": {
