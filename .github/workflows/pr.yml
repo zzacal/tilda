@@ -26,6 +26,12 @@ jobs:
       - name: npm i
         run: npm i
 
+      - name: type-check
+        run: npm run typecheck
+
+      - name: lint
+        run: npm run lint:check
+
       # Runs a single command using the runners shell
       - name: run unit tests
         run: npm run test:cicd
