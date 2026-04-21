@@ -1,7 +1,7 @@
 # builds the application
 FROM node:21.1-alpine as build
 WORKDIR /usr
-COPY [".eslintrc.json", "package.json", "package-lock.json", "tsconfig.json", "./"]
+COPY ["eslint.config.mjs", "package.json", "package-lock.json", "tsconfig.json", "./"]
 COPY src ./src
 RUN npm ci
 RUN npm run build:prod
