@@ -7,12 +7,12 @@ export default class TildaServer {
   express: express.Express = express();
   store: Store;
 
-  constructor (mockPath: string, seed?: MockRecord[]) {
+  constructor (mockPath: string, port: number, seed?: MockRecord[]) {
     this.store = new Store(seed);
     this.express.use(express.urlencoded({ extended: true }))
     this.express.use(express.json())
 
-    this.express.use(fetch(this.store, mockPath))
+    this.express.use(fetch(this.store, mockPath, port))
 
     this.express.post(mockPath, mock(this.store))
   }

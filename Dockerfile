@@ -1,5 +1,5 @@
 # builds the application
-FROM node:21.1-alpine as build
+FROM node:24.14-alpine as build
 WORKDIR /usr
 COPY ["eslint.config.mjs", "package.json", "package-lock.json", "tsconfig.json", "./"]
 COPY src ./src
@@ -7,7 +7,7 @@ RUN npm ci
 RUN npm run build:prod
 
 # outputs the production app
-FROM node:21.1-alpine as output
+FROM node:24.14-alpine as output
 WORKDIR /usr
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev

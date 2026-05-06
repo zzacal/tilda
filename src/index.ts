@@ -17,4 +17,4 @@ try {
   }
 }
 
-new TildaServer(mockPath, seed).listen(port);
+new TildaServer(mockPath, port, seed).listen(port);

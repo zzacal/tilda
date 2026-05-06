@@ -4,9 +4,9 @@ import { notFoundTemplate } from '../messages/notfound'
 import delay from '../delay'
 
 export const fetch =
-  (store: Store, exclude: string) =>
+  (store: Store, mockPath: string, port: number) =>
     async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
-      if (req.path === exclude) {
+      if (req.path === mockPath) {
         return _next()
       }
 
@@ -20,7 +20,7 @@ export const fetch =
         }
         res.status(mockResponse.status).send(mockResponse.body);
       } else {
-        const message = notFoundTemplate(req.path, req.query, req.body, req.method);
+        const message = notFoundTemplate(req.path, req.query, req.body, req.method, port, mockPath);
         console.warn(message);
         res.status(404).send(message);
       }

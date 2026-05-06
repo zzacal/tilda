@@ -8,7 +8,7 @@ vi.spyOn(global.console, 'log').mockImplementation(() => { return });
 vi.spyOn(global.console, "warn").mockImplementation(() => { return });
 
 describe("server", () => {
-  const server = new Server("/mock");
+  const server = new Server("/mock", 8882);
   const app = server.express;
   const expressServer = server.listen(8882);
   const jsonPath = "/user";
@@ -217,6 +217,35 @@ describe("server", () => {
       .then(([getRes, putRes]) => {
         expect(getRes.text).toBe("wildcard");
         expect(putRes.text).toBe("wildcard");
+        done();
+      });
+  }));
+
+  test.each([
+    { method: "get" as const, path: "/curl-roundtrip-get" },
+    { method: "delete" as const, path: "/curl-roundtrip-delete" },
+  ])("the curl in the 404 body, parsed and POSTed back, registers a working mock ($method)", ({ method, path }) => new Promise<void>((done) => {
+    request(app)[method](path)
+      .expect(404)
+      .then((notFoundRes) => {
+        const match = notFoundRes.text.match(/--data-raw '([\s\S]*?)'/);
+        if (!match) throw new Error(`no --data-raw payload in 404 body:\n${notFoundRes.text}`);
+        const setup: MockRecord = JSON.parse(match[1]);
+
+        // Sanity-check that the suggested record is actually method-specific
+        // and shaped like a MockRecord — the whole point of story 03.
+        expect(setup.request.method).toBe(method.toUpperCase());
+        expect(setup.response.status).toBe(200);
+        expect(setup.response.headers["Content-Type"]).toBe(ContentType.applicationJson);
+
+        return request(app)
+          .post("/mock")
+          .send(setup)
+          .expect(200)
+          .then(() => request(app)[method](path).expect(200));
+      })
+      .then((replayRes) => {
+        expect(replayRes.body).toEqual({});
         done();
       });
   }));
