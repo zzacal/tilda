@@ -60,3 +60,19 @@ Try it against the sample seed (`npm run dev`):
 curl -i http://localhost:5111/user/007            # 200 — matches the method-agnostic GET record
 curl -i -X DELETE http://localhost:5111/user/007  # 204 — matches the DELETE-only record
 ```
+
+### Iterating on a mock
+
+While the server is running, you can refine a mock by `POST`ing to `/mock` again with the same `request` shape and a tweaked `response` — Tilda overwrites the existing record in place. "Same shape" means the same `path`, the same `method`, and deep-equal `params` and `body` (with omitted, `undefined`, or `null` treated as `{}`).
+
+If you change the shape — for example, add a `params` constraint — the new record **coexists** with the old one, and the most specific match wins per request (see above). So you can layer a wildcard default and a specific override without restarting the server.
+
+```sh
+curl -s -X POST http://localhost:5111/mock -H 'content-type: application/json' \
+  -d '{"request":{"path":"/api"},"response":{"status":200,"body":"v1"}}'
+
+curl -s -X POST http://localhost:5111/mock -H 'content-type: application/json' \
+  -d '{"request":{"path":"/api"},"response":{"status":200,"body":"v2"}}'
+
+curl http://localhost:5111/api   # → v2  (same shape: v2 replaced v1)
+```

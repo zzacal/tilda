@@ -1,5 +1,5 @@
 import { vi, test, describe, expect } from "vitest";
-import { MockRecord, ContentType } from "../types/mockRecord";
+import { MockBody, MockParams, MockRecord, MockRequest, MockResponse, ContentType } from "../types/mockRecord";
 import Store from "./store";
 import { fromFile } from "../seeding/seed-files";
 
@@ -367,5 +367,129 @@ describe("method-aware matching", () => {
     });
 
     expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("second");
+  });
+});
+
+describe("re-POST identity (story 04)", () => {
+  const headers = { "Content-Type": ContentType.applicationJson };
+  const v1: MockResponse = { headers, status: 200, body: "v1" };
+  const v2: MockResponse = { headers, status: 200, body: "v2" };
+  const populated = { populated: "yes" };
+
+  // Four shapes a request key can take, mirroring how seeds and HTTP-parsed
+  // bodies actually arrive at `Store.add` in the wild.
+  type ReqState = "missing" | "empty" | "undef" | "present";
+
+  function buildSetup(
+    pState: ReqState,
+    bState: ReqState,
+    response: MockResponse
+  ): MockRecord {
+    const req: { path: string; params?: MockParams; body?: MockBody } = {
+      path: "/repost",
+    };
+    if (pState === "empty") req.params = {};
+    else if (pState === "undef") req.params = undefined;
+    else if (pState === "present") req.params = populated;
+    // "missing" → leave the key off entirely
+
+    if (bState === "empty") req.body = {};
+    else if (bState === "undef") req.body = undefined;
+    else if (bState === "present") req.body = populated;
+
+    // Cast: MockRequest declares params/body as required keys, but JSON-parsed
+    // POSTs (and minimal seeds) routinely arrive with the keys missing — that's
+    // the runtime shape we need to exercise here.
+    return { request: req as MockRequest, response };
+  }
+
+  // Specificity ties resolve to first-added, so if a second add does NOT
+  // overwrite, GET returns v1. A passing assertion of v2 therefore proves
+  // exactly one record exists in the cache.
+  const states: ReqState[] = ["missing", "empty", "undef", "present"];
+  const sameShapeMatrix = states.flatMap((p) => states.map((b) => ({ p, b })));
+
+  describe.each(sameShapeMatrix)(
+    "two re-POSTs with the same shape (params=$p, body=$b)",
+    ({ p, b }) => {
+      test("the second response wins and exactly one record exists", () => {
+        const localStore = new Store();
+        localStore.add(buildSetup(p, b, v1));
+        localStore.add(buildSetup(p, b, v2));
+
+        const queryParams = p === "present" ? populated : {};
+        const queryBody = b === "present" ? populated : {};
+        expect(localStore.get("/repost", queryParams, queryBody)).toEqual(v2);
+      });
+    }
+  );
+
+  // The user-facing punchline of fed's normalization point: `params: undefined`
+  // from a seed file and `params: {}` from a runtime POST share an identity.
+  // Switching between any of {missing, empty, undef} on re-POST overwrites.
+  test.each([
+    { first: "missing" as const, second: "empty" as const },
+    { first: "empty" as const, second: "undef" as const },
+    { first: "undef" as const, second: "missing" as const },
+  ])(
+    "re-POST that swaps params $first → $second still overwrites (both normalize to {})",
+    ({ first, second }) => {
+      const localStore = new Store();
+      localStore.add(buildSetup(first, "missing", v1));
+      localStore.add(buildSetup(second, "missing", v2));
+      expect(localStore.get("/repost", {}, {})).toEqual(v2);
+    }
+  );
+
+  // AC4: a request that *differs* in params or body must create a new record,
+  // even when one shape is a subset of the other. This is the asymmetry case
+  // and the exact bug `_.isMatch` was masking on the write side.
+  test("AC4: less-specific then more-specific stays as two records", () => {
+    const localStore = new Store();
+    localStore.add({
+      request: { path: "/api", params: { a: "1" }, body: {} },
+      response: v1,
+    });
+    localStore.add({
+      request: { path: "/api", params: { a: "1", b: "2" }, body: {} },
+      response: v2,
+    });
+
+    // More-specific record wins for an exact match (story 01).
+    expect(localStore.get("/api", { a: "1", b: "2" }, {})).toEqual(v2);
+    // The less-specific record still serves a request that doesn't pin `b`.
+    expect(localStore.get("/api", { a: "1" }, {})).toEqual(v1);
+  });
+
+  test("AC4: more-specific then less-specific stays as two records", () => {
+    const localStore = new Store();
+    localStore.add({
+      request: { path: "/api", params: { a: "1", b: "2" }, body: {} },
+      response: v1,
+    });
+    localStore.add({
+      request: { path: "/api", params: { a: "1" }, body: {} },
+      response: v2,
+    });
+
+    expect(localStore.get("/api", { a: "1", b: "2" }, {})).toEqual(v1);
+    // GET with just {a:"1"} only matches the {a:"1"} record (subset match
+    // requires stored ⊆ incoming, so {a:"1",b:"2"} is filtered out).
+    expect(localStore.get("/api", { a: "1" }, {})).toEqual(v2);
+  });
+
+  test("AC4: a re-POST with a different body value creates a new record", () => {
+    const localStore = new Store();
+    localStore.add({
+      request: { path: "/api", params: {}, body: { type: "premium" } },
+      response: v1,
+    });
+    localStore.add({
+      request: { path: "/api", params: {}, body: { type: "free" } },
+      response: v2,
+    });
+
+    expect(localStore.get("/api", {}, { type: "premium" })).toEqual(v1);
+    expect(localStore.get("/api", {}, { type: "free" })).toEqual(v2);
   });
 });

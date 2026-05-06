@@ -250,6 +250,37 @@ describe("server", () => {
       });
   }));
 
+  test("re-POST with the same path overwrites the response (story 04)", () => new Promise<void>((done) => {
+    const path = "/repost-api";
+    // Both POSTs omit `params` and `body` — the runtime shape that JSON-parsed
+    // minimal seeds and quick `curl` POSTs actually produce. Before story 04
+    // the second add silently duplicated and v1 kept winning.
+    const v1 = {
+      request: { path },
+      response: {
+        status: 200,
+        body: "v1",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+    const v2 = {
+      request: { path },
+      response: {
+        status: 200,
+        body: "v2",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+
+    request(app).post("/mock").send(v1).expect(200)
+      .then(() => request(app).post("/mock").send(v2).expect(200))
+      .then(() => request(app).get(path).expect(200))
+      .then((res) => {
+        expect(res.text).toBe("v2");
+        done();
+      });
+  }));
+
   test("fetch is delayed when delay is set", () => new Promise<void>((done) => {
 
     request(app)

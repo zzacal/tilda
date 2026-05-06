@@ -106,14 +106,30 @@ export default class Store {
   }
 
   /**
+   * Write-side identity check for `params` / `body`: deep-equal with
+   * `undefined` and `null` normalized to `{}`. Distinct from `match` (which
+   * is subset-based and used by the cache read path) — a re-POST should only
+   * overwrite a record with the *same* shape, not a record whose constraints
+   * happen to be a subset of the new ones. Without this, a more-specific
+   * re-POST would silently clobber a less-specific existing record.
+   */
+  private sameShape(
+    a: MockParams | MockBody,
+    b: MockParams | MockBody
+  ): boolean {
+    return _.isEqual(a ?? {}, b ?? {});
+  }
+
+  /**
    * Adds a mock record to the cache.
    *
-   * Accepts a MockRecord setup object containing the request
-   * and response. Creates a new MockRecord from the setup,
-   * checks if a matching record already exists, updates it if so,
-   * and adds the new record to the cache if no match.
+   * If an existing record shares an identity with `setup` — same `path`,
+   * `sameMethod`, deep-equal `params`, and deep-equal `body` (with
+   * `undefined`/`null` normalized to `{}`) — its response is overwritten in
+   * place. Otherwise a new record is appended; `getRecord`'s specificity
+   * scoring decides which record wins per incoming request.
    *
-   * Returns the added MockRecord.
+   * Returns the added (or updated) MockRecord.
   */
   add(setup: MockRecord): MockRecord {
     const { request, response } = setup;
@@ -131,8 +147,8 @@ export default class Store {
       (r) =>
         r.request.path === record.request.path &&
         this.sameMethod(r.request.method, record.request.method) &&
-        this.match(record.request.params, r.request.params) &&
-        this.match(record.request.body, r.request.body)
+        this.sameShape(r.request.params, record.request.params) &&
+        this.sameShape(r.request.body, record.request.body)
     );
 
     if (existing) {
