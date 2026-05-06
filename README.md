@@ -22,6 +22,26 @@ Set up a container using docker compose by following [this guide](./documentatio
 
 Start a process locally by following [this guide](./documentation/as-process/README.md)
 
+## Calling Tilda from the browser
+
+Tilda answers `OPTIONS` preflight requests and adds `Access-Control-Allow-Origin: *` to every response by default, so a fetch from your frontend dev server (Vite, Next.js, CRA — whatever) just works. Start Tilda with `npm run dev`, then from a browser app running anywhere:
+
+```js
+const res = await fetch("http://localhost:5111/user/007");
+const user = await res.json();
+console.log(user); // → { firstName: "James", license: "toDrive", ... }
+```
+
+Tighten the policy when you need to mirror a real upstream — e.g. to confirm your app handles a strict `Access-Control-Allow-Origin`:
+
+```sh
+CORS_ORIGIN=https://app.example npm run dev
+```
+
+A specific mock can override the default per response: set `Access-Control-Allow-Origin` (or any other CORS header) in its `headers` and that value wins over Tilda's default.
+
+Testing your own CORS plumbing and want Tilda to stay out of the way? Set `CORS_DISABLE=1` and Tilda won't add or answer any CORS headers.
+
 ## How matching works
 
 When a request comes in, Tilda finds every record whose `path` matches exactly and whose stored `params` and `body` are subsets of the incoming request (subset matching uses `lodash.isMatch`, so a stored `{}` matches anything).

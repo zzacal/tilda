@@ -172,7 +172,10 @@ describe("server", () => {
     });
   }));
 
-  test("OPTIONS does not match a GET-only mock and 404s with the method in the message", () => new Promise<void>((done) => {
+  test("PATCH does not match a GET-only mock and 404s with the method in the message", () => new Promise<void>((done) => {
+    // Story 02 invariant: a method-specific record only matches that method.
+    // We use PATCH (not OPTIONS) because story 11 mounts the `cors` middleware
+    // ahead of the fetch handler, which short-circuits OPTIONS with a 204.
     const path = "/get-only";
     const setup: MockRecord = {
       request: { path, params: {}, body: {}, method: "GET" },
@@ -187,9 +190,9 @@ describe("server", () => {
       .post("/mock")
       .send(setup)
       .expect(200)
-      .then(() => request(app).options(path).expect(404))
+      .then(() => request(app).patch(path).expect(404))
       .then((response) => {
-        expect(response.text).toContain("OPTIONS");
+        expect(response.text).toContain("PATCH");
         expect(response.text).toContain(path);
         done();
       });
@@ -313,4 +316,102 @@ describe("server", () => {
         done();
       });
   }));
+});
+
+describe("CORS (story 11)", () => {
+  // Each scenario gets its own server so the cors config is isolated.
+  // We rely on supertest's app-binding (no listen()) to avoid port collisions.
+  const mockedPath = "/cors-target";
+  const mockedRecord: MockRecord = {
+    request: { path: mockedPath, params: {}, body: {}, method: "GET" },
+    response: {
+      status: 200,
+      body: "served",
+      headers: { "Content-Type": ContentType.textPlain },
+    },
+  };
+
+  test("OPTIONS preflight is short-circuited with 204 + permissive CORS headers", async () => {
+    const app = new Server("/mock", 0).express;
+    await request(app).post("/mock").send(mockedRecord).expect(200);
+
+    const res = await request(app)
+      .options(mockedPath)
+      .set("Origin", "https://app.example")
+      .set("Access-Control-Request-Method", "GET")
+      .expect(204);
+
+    expect(res.headers["access-control-allow-origin"]).toBe("*");
+    expect(res.headers["access-control-allow-methods"]).toBe("*");
+    expect(res.headers["access-control-allow-headers"]).toBe("*");
+    // Critically, the GET mock body must not leak through the preflight.
+    expect(res.text).not.toContain("served");
+  });
+
+  test("GET response includes Access-Control-Allow-Origin: * by default", async () => {
+    const app = new Server("/mock", 0).express;
+    await request(app).post("/mock").send(mockedRecord).expect(200);
+
+    const res = await request(app)
+      .get(mockedPath)
+      .set("Origin", "https://app.example")
+      .expect(200);
+
+    expect(res.text).toBe("served");
+    expect(res.headers["access-control-allow-origin"]).toBe("*");
+  });
+
+  test("a mock-supplied Access-Control-Allow-Origin overrides the default", async () => {
+    const app = new Server("/mock", 0).express;
+    const overrideRecord: MockRecord = {
+      request: { path: "/cors-override", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: "strict",
+        // Lowercase header key — the override path must work regardless of
+        // casing, since Node's res.setHeader is case-insensitive.
+        headers: {
+          "Content-Type": ContentType.textPlain,
+          "access-control-allow-origin": "https://other.example",
+        },
+      },
+    };
+    await request(app).post("/mock").send(overrideRecord).expect(200);
+
+    const res = await request(app)
+      .get("/cors-override")
+      .set("Origin", "https://app.example")
+      .expect(200);
+
+    expect(res.headers["access-control-allow-origin"]).toBe("https://other.example");
+  });
+
+  test("CORS_DISABLE skips the middleware so preflight gets no CORS headers", async () => {
+    const app = new Server("/mock", 0, undefined, { origin: "*", disabled: true }).express;
+    await request(app).post("/mock").send(mockedRecord).expect(200);
+
+    const res = await request(app)
+      .options(mockedPath)
+      .set("Origin", "https://app.example")
+      .set("Access-Control-Request-Method", "GET");
+
+    // Without the cors middleware, OPTIONS falls through to the fetch handler,
+    // which has no method-agnostic match for a GET-only mock and 404s.
+    expect(res.status).toBe(404);
+    expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+    expect(res.headers["access-control-allow-methods"]).toBeUndefined();
+  });
+
+  test("CORS_ORIGIN reflects a specific origin on responses", async () => {
+    const allowed = "https://app.example";
+    const app = new Server("/mock", 0, undefined, { origin: allowed, disabled: false }).express;
+    await request(app).post("/mock").send(mockedRecord).expect(200);
+
+    const res = await request(app)
+      .get(mockedPath)
+      .set("Origin", allowed)
+      .expect(200);
+
+    expect(res.headers["access-control-allow-origin"]).toBe(allowed);
+  });
 });

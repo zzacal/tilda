@@ -19,10 +19,12 @@
   "author": "Zac Zacal",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^5.2.0",
     "lodash": "^4.18.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.1",
     "@types/lodash": "^4.17.16",
     "@types/node": "^20.11.27",
