@@ -42,6 +42,16 @@ A specific mock can override the default per response: set `Access-Control-Allow
 
 Testing your own CORS plumbing and want Tilda to stay out of the way? Set `CORS_DISABLE=1` and Tilda won't add or answer any CORS headers.
 
+## Stopping Tilda
+
+`Ctrl+C` (or a `SIGTERM` from your container orchestrator) shuts Tilda down gracefully — the process stops accepting new connections, lets any in-flight request finish, then exits:
+
+```
+shutting down on port 5111 (SIGINT)
+```
+
+If a slow `delay` mock is holding things open and you need out immediately, hit `Ctrl+C` a second time and Tilda hard-exits.
+
 ## How matching works
 
 When a request comes in, Tilda finds every record whose `path` matches (literally, or via a `:name` parameter or `*` wildcard — see below) and whose stored `params` and `body` are subsets of the incoming request (subset matching uses `lodash.isMatch`, so a stored `{}` matches anything).

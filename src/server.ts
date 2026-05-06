@@ -1,5 +1,6 @@
 import cors, { CorsOptions } from 'cors'
 import express from 'express'
+import type { Server as HttpServer } from 'http'
 import Store from './cacher/store'
 import { fetch, mock } from './handlers'
 import { MockRecord } from './types/mockRecord';
@@ -14,6 +15,8 @@ export interface CorsConfig {
 export default class TildaServer {
   express: express.Express = express();
   store: Store;
+  private _httpServer: HttpServer | undefined;
+  private closePromise: Promise<void> | undefined;
 
   constructor (mockPath: string, port: number, seed?: MockRecord[], corsConfig?: CorsConfig) {
     this.store = new Store(seed);
@@ -35,10 +38,48 @@ export default class TildaServer {
     this.express.post(mockPath, mock(this.store))
   }
 
+  /**
+   * The underlying Node `http.Server`, captured on `listen()`. `undefined`
+   * before `listen()` is called. Exposed as an escape hatch for callers that
+   * need finer control (e.g. socket tracking, manual `keepAliveTimeout`
+   * tweaks). Most callers should use `close()` instead.
+   */
+  get httpServer(): HttpServer | undefined {
+    return this._httpServer;
+  }
+
   listen (port: number): this {
-    this.express.listen(port, () => {
+    this._httpServer = this.express.listen(port, () => {
       console.log(`listening on port ${port}`)
     })
     return this
+  }
+
+  /**
+   * Stops accepting new connections and resolves once all in-flight requests
+   * have completed (Node's `http.Server.close` callback fires).
+   *
+   * Idempotent:
+   *  - `close()` before `listen()` resolves immediately.
+   *  - Overlapping `close()` calls share the same in-flight promise, so every
+   *    awaiter unblocks together when shutdown actually finishes.
+   *  - Calls after a completed shutdown resolve immediately.
+   *
+   * Does **not** force-close idle keep-alive sockets — Node's `http.Server`
+   * waits for them to drain on their own. Acceptable for Tilda's typical
+   * test/embedded use (supertest doesn't keep-alive across tests). If you
+   * need socket-level control, reach for `httpServer`.
+   */
+  close (): Promise<void> {
+    if (this.closePromise) return this.closePromise;
+    const server = this._httpServer;
+    if (!server) return Promise.resolve();
+    this.closePromise = new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    return this.closePromise;
   }
 }

@@ -22,7 +22,29 @@ try {
   }
 }
 
-new TildaServer(mockPath, port, seed, corsConfig).listen(port);
+const server = new TildaServer(mockPath, port, seed, corsConfig).listen(port);
+
+// Process-wide signal handlers live here, not inside TildaServer, so a test
+// harness or embedder importing the class doesn't get them attached for free.
+let shuttingDown = false;
+const onSignal = (signal: NodeJS.Signals): void => {
+  if (shuttingDown) {
+    // A second signal during shutdown means the user (or orchestrator) wants
+    // out *now* — likely an in-flight `delay` mock is holding things open.
+    process.exit(1);
+  }
+  shuttingDown = true;
+  console.log(`shutting down on port ${port} (${signal})`);
+  server.close()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error(`error during shutdown: ${err instanceof Error ? err.message : err}`);
+      process.exit(1);
+    });
+};
+
+process.on("SIGINT", onSignal);
+process.on("SIGTERM", onSignal);
 
 function isTruthy(value: string | undefined): boolean {
   if (value == null) return false;

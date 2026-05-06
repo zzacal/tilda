@@ -1,8 +1,24 @@
-import { expect, test, describe, vi, beforeAll } from 'vitest'
+import { expect, test, describe, vi, beforeAll, afterAll } from 'vitest'
 
 import request from "supertest";
 import Server from "./server";
 import { ContentType, MockRecord } from "./types/mockRecord";
+
+/**
+ * Resolves once the underlying http.Server has finished binding to its port,
+ * or rejects if the bind fails (e.g. EADDRINUSE). `Server.listen` returns
+ * synchronously before the OS has actually accepted the bind, so tests that
+ * care about port state — like the port-reuse regression below — must wait.
+ */
+async function untilListening(server: Server): Promise<void> {
+  const httpServer = server.httpServer;
+  if (!httpServer) throw new Error("listen() did not capture httpServer");
+  if (httpServer.listening) return;
+  await new Promise<void>((resolve, reject) => {
+    httpServer.once("listening", () => resolve());
+    httpServer.once("error", reject);
+  });
+}
 
 vi.spyOn(global.console, 'log').mockImplementation(() => { return });
 vi.spyOn(global.console, "warn").mockImplementation(() => { return });
@@ -61,6 +77,10 @@ describe("server", () => {
         done();
       });
   }));
+
+  // Story 15: previously this server was opened on 8882 and never closed,
+  // so reruns within the same Node process could fail with EADDRINUSE.
+  afterAll(() => server.close());
 
   test("fetch returns xml when response is xml", () => new Promise<void>((done) => {
     request(app)
@@ -549,5 +569,44 @@ describe("CORS (story 11)", () => {
       .expect(200);
 
     expect(res.headers["access-control-allow-origin"]).toBe(allowed);
+  });
+});
+
+describe("graceful shutdown (story 15)", () => {
+  test("close() releases the port so a second listen on the same port succeeds", async () => {
+    // 8883 is dedicated to this test so it doesn't race with the top-level
+    // describe's 8882 server. If close() didn't actually release the port,
+    // the second listen would emit `error` (EADDRINUSE) and the inner
+    // `untilListening` would reject — failing the test.
+    const port = 8883;
+
+    const first = new Server("/__tilda/mock", port).listen(port);
+    await untilListening(first);
+    await first.close();
+
+    const second = new Server("/__tilda/mock", port).listen(port);
+    await untilListening(second);
+    await second.close();
+  });
+
+  test("close() before listen() is a no-op (no throw)", async () => {
+    const server = new Server("/__tilda/mock", 0);
+    await expect(server.close()).resolves.toBeUndefined();
+  });
+
+  test("close() called twice resolves both awaiters without throwing", async () => {
+    const port = 8884;
+    const server = new Server("/__tilda/mock", port).listen(port);
+    await untilListening(server);
+
+    const first = server.close();
+    const second = server.close();
+
+    // Both awaiters share the same in-flight promise — neither throws and
+    // both resolve once shutdown is actually done.
+    await expect(Promise.all([first, second])).resolves.toEqual([undefined, undefined]);
+
+    // Calling again after completion is also a no-op.
+    await expect(server.close()).resolves.toBeUndefined();
   });
 });
