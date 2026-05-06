@@ -10,7 +10,7 @@ export const fetch =
         return _next()
       }
 
-      const mockResponse = store.get(req.path, req.query, req.body);
+      const mockResponse = store.get(req.path, req.query, req.body, req.method);
       if (mockResponse) {
         for (const key in mockResponse.headers) {
           res.setHeader(key, mockResponse.headers[key]);
@@ -20,7 +20,7 @@ export const fetch =
         }
         res.status(mockResponse.status).send(mockResponse.body);
       } else {
-        const message = notFoundTemplate(req.path, req.query, req.body);
+        const message = notFoundTemplate(req.path, req.query, req.body, req.method);
         console.warn(message);
         res.status(404).send(message);
       }

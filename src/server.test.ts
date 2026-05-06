@@ -140,6 +140,87 @@ describe("server", () => {
       });
   }))
 
+  test("GET and DELETE on the same path respond independently", () => new Promise<void>((done) => {
+    const path = "/method-aware";
+    const getSetup: MockRecord = {
+      request: { path, params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: "got it",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+    const deleteSetup: MockRecord = {
+      request: { path, params: {}, body: {}, method: "DELETE" },
+      response: {
+        status: 204,
+        body: "",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+
+    Promise.all([
+      request(app).post("/mock").send(getSetup).expect(200),
+      request(app).post("/mock").send(deleteSetup).expect(200),
+    ]).then(() => Promise.all([
+      request(app).get(path).expect(200),
+      request(app).delete(path).expect(204),
+    ])).then(([getRes, deleteRes]) => {
+      expect(getRes.text).toBe("got it");
+      expect(deleteRes.text).toBe("");
+      done();
+    });
+  }));
+
+  test("OPTIONS does not match a GET-only mock and 404s with the method in the message", () => new Promise<void>((done) => {
+    const path = "/get-only";
+    const setup: MockRecord = {
+      request: { path, params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: "ok",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+
+    request(app)
+      .post("/mock")
+      .send(setup)
+      .expect(200)
+      .then(() => request(app).options(path).expect(404))
+      .then((response) => {
+        expect(response.text).toContain("OPTIONS");
+        expect(response.text).toContain(path);
+        done();
+      });
+  }));
+
+  test("a method-agnostic mock matches any incoming method", () => new Promise<void>((done) => {
+    const path = "/anything";
+    const setup: MockRecord = {
+      request: { path, params: {}, body: {} },
+      response: {
+        status: 200,
+        body: "wildcard",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+
+    request(app)
+      .post("/mock")
+      .send(setup)
+      .expect(200)
+      .then(() => Promise.all([
+        request(app).get(path).expect(200),
+        request(app).put(path).expect(200),
+      ]))
+      .then(([getRes, putRes]) => {
+        expect(getRes.text).toBe("wildcard");
+        expect(putRes.text).toBe("wildcard");
+        done();
+      });
+  }));
+
   test("fetch is delayed when delay is set", () => new Promise<void>((done) => {
 
     request(app)

@@ -267,3 +267,105 @@ describe("specificity-based matching", () => {
     ).toBe("toDrive");
   });
 });
+
+describe("method-aware matching", () => {
+  const headers = { "Content-Type": ContentType.applicationJson };
+
+  test("GET and DELETE on the same path coexist and respond independently", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/users", params: {}, body: {}, method: "GET" },
+        response: { headers, status: 200, body: "list" },
+      },
+      {
+        request: { path: "/users", params: {}, body: {}, method: "DELETE" },
+        response: { headers, status: 204, body: "" },
+      },
+    ]);
+
+    expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("list");
+    expect(localStore.get("/users", {}, {}, "DELETE")?.status).toBe(204);
+  });
+
+  test("a record with no method matches any request method", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/anything", params: {}, body: {} },
+        response: { headers, status: 200, body: "wildcard" },
+      },
+    ]);
+
+    expect(localStore.get("/anything", {}, {}, "GET")?.body).toBe("wildcard");
+    expect(localStore.get("/anything", {}, {}, "POST")?.body).toBe("wildcard");
+    expect(localStore.get("/anything", {}, {}, "PATCH")?.body).toBe("wildcard");
+  });
+
+  test("a method-specific record beats a method-agnostic one for the same path", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/users", params: {}, body: {} },
+        response: { headers, status: 200, body: "any" },
+      },
+      {
+        request: { path: "/users", params: {}, body: {}, method: "POST" },
+        response: { headers, status: 201, body: "posted" },
+      },
+    ]);
+
+    expect(localStore.get("/users", {}, {}, "POST")?.body).toBe("posted");
+    expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("any");
+  });
+
+  test("OPTIONS does not match a GET-only mock", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/users", params: {}, body: {}, method: "GET" },
+        response: { headers, status: 200, body: "list" },
+      },
+    ]);
+
+    expect(localStore.get("/users", {}, {}, "OPTIONS")).toBeUndefined();
+    expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("list");
+  });
+
+  test("method matching is case-insensitive", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/users", params: {}, body: {}, method: "get" },
+        response: { headers, status: 200, body: "list" },
+      },
+    ]);
+
+    expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("list");
+    expect(localStore.get("/users", {}, {}, "Get")?.body).toBe("list");
+  });
+
+  test("add does not overwrite a method-agnostic record with a method-specific one", () => {
+    const localStore = new Store();
+    localStore.add({
+      request: { path: "/users", params: {}, body: {} },
+      response: { headers, status: 200, body: "any" },
+    });
+    localStore.add({
+      request: { path: "/users", params: {}, body: {}, method: "GET" },
+      response: { headers, status: 200, body: "list" },
+    });
+
+    expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("list");
+    expect(localStore.get("/users", {}, {}, "POST")?.body).toBe("any");
+  });
+
+  test("add overwrites the response on the same path/method/params/body", () => {
+    const localStore = new Store();
+    localStore.add({
+      request: { path: "/users", params: {}, body: {}, method: "GET" },
+      response: { headers, status: 200, body: "first" },
+    });
+    localStore.add({
+      request: { path: "/users", params: {}, body: {}, method: "get" },
+      response: { headers, status: 200, body: "second" },
+    });
+
+    expect(localStore.get("/users", {}, {}, "GET")?.body).toBe("second");
+  });
+});

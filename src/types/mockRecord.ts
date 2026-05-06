@@ -27,6 +27,10 @@ export type MockRequest = {
   path: string;
   params: MockParams;
   body: MockBody;
+  /**
+   * HTTP method to match (case-insensitive). Omit to match any method.
+   */
+  method?: string;
 };
 
 export type MockResponse = {

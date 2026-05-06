@@ -37,6 +37,21 @@
   },
   {
     "request": {
+      "path": "/user/007",
+      "method": "DELETE",
+      "body": {},
+      "params": {}
+    },
+    "response": {
+      "body": {},
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "status": 204
+    }
+  },
+  {
+    "request": {
       "path": "/delayed",
       "body": {},
       "params": {}
