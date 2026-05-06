@@ -12,16 +12,41 @@ export default class Store {
 
   /**
    * Searches the mock cache for a record matching the given request details.
-   * 
+   *
+   * When multiple records match, the most specific one wins — specificity is the
+   * number of constrained fields in the stored `params` + `body`. Ties are broken
+   * by registration order (first-added wins).
+   *
    * This is an internal method used to find cache records. It is not part of the public API.
   */
-  private getRecord(path: string, params: MockParams, body: MockBody): MockRecord {
-    return this.cache.filter(
-      (r) =>
-        r.request.path === path &&
-        this.match(params, r.request.params) &&
-        this.match(body, r.request.body)
-    )[0];
+  private getRecord(path: string, params: MockParams, body: MockBody): MockRecord | undefined {
+    const candidates = this.cache
+      .map((record, index) => ({ record, index }))
+      .filter(
+        ({ record }) =>
+          record.request.path === path &&
+          this.match(params, record.request.params) &&
+          this.match(body, record.request.body)
+      );
+
+    candidates.sort((a, b) => {
+      const scoreDiff = this.specificity(b.record) - this.specificity(a.record);
+      if (scoreDiff !== 0) return scoreDiff;
+      return a.index - b.index;
+    });
+
+    return candidates[0]?.record;
+  }
+
+  private specificity(record: MockRecord): number {
+    return this.fieldCount(record.request.params) + this.fieldCount(record.request.body);
+  }
+
+  private fieldCount(value: MockParams | MockBody): number {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === "string") return value.length > 0 ? 1 : 0;
+    if (typeof value === "object") return Object.keys(value).length;
+    return 0;
   }
 
   /**

@@ -1,6 +1,7 @@
 import { vi, test, describe, expect } from "vitest";
 import { MockRecord, ContentType } from "../types/mockRecord";
 import Store from "./store";
+import { fromFile } from "../seeding/seed-files";
 
 vi.spyOn(global.console, 'log').mockImplementation(() => { return });
 describe("cache store", () => {
@@ -170,5 +171,99 @@ describe("cache store", () => {
     store.add(setup);
     const result = store.get(jsonPath, {}, { knownField: "known at setup", someDynamicField: "not known at setup" });
     expect(result).toEqual(setup.response);
+  });
+});
+
+describe("specificity-based matching", () => {
+  const headers = { "Content-Type": ContentType.applicationJson };
+
+  test("more specific params win even when registered after wildcard params", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/user/007", params: {}, body: {} },
+        response: { headers, status: 200, body: { license: "toDrive" } },
+      },
+      {
+        request: { path: "/user/007", params: { secret: "true" }, body: {} },
+        response: { headers, status: 200, body: { license: "toKill" } },
+      },
+    ]);
+
+    expect(localStore.get("/user/007", { secret: "true" }, {})?.body).toEqual({
+      license: "toKill",
+    });
+    expect(localStore.get("/user/007", {}, {})?.body).toEqual({
+      license: "toDrive",
+    });
+    expect(localStore.get("/user/007", { other: "val" }, {})?.body).toEqual({
+      license: "toDrive",
+    });
+  });
+
+  test("more specific params win when registered before wildcard params", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/user/007", params: { secret: "true" }, body: {} },
+        response: { headers, status: 200, body: { license: "toKill" } },
+      },
+      {
+        request: { path: "/user/007", params: {}, body: {} },
+        response: { headers, status: 200, body: { license: "toDrive" } },
+      },
+    ]);
+
+    expect(localStore.get("/user/007", { secret: "true" }, {})?.body).toEqual({
+      license: "toKill",
+    });
+    expect(localStore.get("/user/007", {}, {})?.body).toEqual({
+      license: "toDrive",
+    });
+  });
+
+  test("body specificity counts toward the score", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/order", params: {}, body: {} },
+        response: { headers, status: 200, body: "wildcard" },
+      },
+      {
+        request: { path: "/order", params: {}, body: { type: "premium" } },
+        response: { headers, status: 200, body: "premium" },
+      },
+    ]);
+
+    expect(localStore.get("/order", {}, { type: "premium", id: 1 })?.body).toBe(
+      "premium"
+    );
+    expect(localStore.get("/order", {}, { id: 1 })?.body).toBe("wildcard");
+  });
+
+  test("ties are broken by registration order (first wins)", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/x", params: { a: "1" }, body: {} },
+        response: { headers, status: 200, body: "first" },
+      },
+      {
+        request: { path: "/x", params: { b: "2" }, body: {} },
+        response: { headers, status: 200, body: "second" },
+      },
+    ]);
+
+    expect(localStore.get("/x", { a: "1", b: "2" }, {})?.body).toBe("first");
+  });
+
+  test("the documented sample-seeds/user.json behavior holds", () => {
+    const seed = fromFile("./documentation/sample-seeds/user.json");
+    expect(seed.length).toBeGreaterThan(0);
+    const localStore = new Store(seed);
+
+    expect(
+      (localStore.get("/user/007", { secret: "true" }, {})?.body as Record<string, string>)
+        .license
+    ).toBe("toKill");
+    expect(
+      (localStore.get("/user/007", {}, {})?.body as Record<string, string>).license
+    ).toBe("toDrive");
   });
 });

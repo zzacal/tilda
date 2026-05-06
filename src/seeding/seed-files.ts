@@ -21,8 +21,8 @@ export function fromFile(filePath: string): MockRecord[] {
 
 export function getFiles(directoryPath: string, extension = ".json"): string[] {
   const files = fs.readdirSync(directoryPath);
-  const jsonFiles = files.filter(
-    (file) => path.extname(file).toLowerCase() === extension
-  );
+  const jsonFiles = files
+    .filter((file) => path.extname(file).toLowerCase() === extension)
+    .sort();
   return jsonFiles;
 }
