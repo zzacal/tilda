@@ -123,6 +123,45 @@ curl -s -X POST http://localhost:5111/__tilda/mock -H 'content-type: application
 curl http://localhost:5111/api   # → v2  (same shape: v2 replaced v1)
 ```
 
+## Templated responses
+
+A mock for `/users/:id` is more useful when the response can reference the captured `id`. Tilda substitutes `{{ request.X.Y }}` placeholders in the response body with fields from the incoming request:
+
+- `{{ request.params.X }}` — path parameters captured by `:name` segments (e.g. the `id` in `/users/:id`).
+- `{{ request.query.X }}` — query-string values.
+- `{{ request.headers.X }}` — request headers. Node lowercases header names, so use `content-type`, not `Content-Type`. Hyphens in keys are fine: `{{ request.headers.x-api-key }}` works.
+- `{{ request.body.X }}` — fields from the parsed JSON body.
+
+Whitespace inside the braces is optional: `{{request.params.id}}` and `{{ request.params.id }}` are equivalent.
+
+Register a templated mock and call it (`npm run dev`):
+
+```sh
+curl -s -X POST http://localhost:5111/__tilda/mock -H 'content-type: application/json' \
+  -d '{"request":{"path":"/users/:id"},"response":{"status":200,"body":{"id":"{{ request.params.id }}"}}}'
+
+curl http://localhost:5111/users/42   # → {"id":"42"}
+```
+
+Tilda walks the whole response body — strings inside nested objects and arrays are templated; object keys, numbers, booleans, and `null` pass through unchanged. Non-string source values are coerced with `String(value)` at substitution time, so `{{ request.body.count }}` where `count` is `42` produces the **string** `"42"` (templating cannot emit a raw number into JSON output today). Substitution runs once per string — a substituted value containing `{{...}}` is left as-is, no recursion.
+
+When a placeholder does not resolve — typo, missing field, whatever — Tilda warns to the dev-server log and substitutes an empty string. The literal `{{...}}` never reaches the caller:
+
+```
+tilda: template variable "request.params.nonexistent" did not resolve; substituting empty string (request: GET /users/42)
+```
+
+Responses without `{{ ... }}` placeholders behave exactly as before.
+
+### Naming gotcha: `params` means two different things
+
+`params` is overloaded in Tilda — it follows Express convention in templates, but has a different meaning in seed records:
+
+- **In templates** (`{{ request.params.X }}`), `params` follows Express convention: **path parameters** captured by `:name` segments.
+- **In `MockRequest.params`** (the seed/registration shape), `params` means the **query string** the matcher constrains on.
+
+So `{{ request.query.X }}` is the template-side spelling for what a record calls `request.params`. The seed-side naming is a holdover from before path patterns existed; we'll reconcile it in a major release.
+
 ## Upgrading
 
 The control endpoint moved from `/mock` to `/__tilda/mock` so you can mock an upstream's `/mock` route without colliding with Tilda itself. If your existing scripts POST to `/mock`, either point them at `/__tilda/mock` or run Tilda with `MOCK_PATH=/mock` to keep the old behavior.

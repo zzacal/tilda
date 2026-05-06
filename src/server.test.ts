@@ -340,6 +340,95 @@ describe("namespaced control endpoint (story 07)", () => {
   });
 });
 
+describe("response templating (story 12)", () => {
+  test("a `/users/:id` mock with templates substitutes path params and query", async () => {
+    const app = new Server("/__tilda/mock", 0).express;
+    const setup: MockRecord = {
+      request: { path: "/users/:id", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: {
+          id: "{{request.params.id}}",
+          echoed: "{{ request.query.q }}",
+          static: "literal",
+        },
+        headers: { "Content-Type": ContentType.applicationJson },
+      },
+    };
+
+    await request(app).post("/__tilda/mock").send(setup).expect(200);
+
+    const res = await request(app).get("/users/42?q=hello").expect(200);
+    expect(res.body).toEqual({ id: "42", echoed: "hello", static: "literal" });
+  });
+
+  test("a non-templated response is returned unchanged (AC4)", async () => {
+    const app = new Server("/__tilda/mock", 0).express;
+    const setup: MockRecord = {
+      request: { path: "/static", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: { plain: "no templates here", n: 1 } as unknown as object,
+        headers: { "Content-Type": ContentType.applicationJson },
+      },
+    };
+
+    await request(app).post("/__tilda/mock").send(setup).expect(200);
+
+    const res = await request(app).get("/static").expect(200);
+    expect(res.body).toEqual({ plain: "no templates here", n: 1 });
+  });
+
+  test("hyphenated header keys (user-agent) resolve and never leak `{{...}}` (AC3)", async () => {
+    // Live-test regression: with the original `[\w.]+` regex, hyphenated keys
+    // didn't even match the template pattern, so `{{ request.headers.user-agent }}`
+    // shipped to the caller as a literal — no warning, no substitution. AC3
+    // explicitly forbids leaking `{{...}}`. Pin the fix here.
+    const app = new Server("/__tilda/mock", 0).express;
+    const setup: MockRecord = {
+      request: { path: "/h", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: { ua: "{{ request.headers.user-agent }}" },
+        headers: { "Content-Type": ContentType.applicationJson },
+      },
+    };
+
+    await request(app).post("/__tilda/mock").send(setup).expect(200);
+
+    const res = await request(app)
+      .get("/h")
+      .set("user-agent", "TildaTest/1.0")
+      .expect(200);
+
+    expect(res.body).toEqual({ ua: "TildaTest/1.0" });
+  });
+
+  test("a missing template variable warns and substitutes empty string", async () => {
+    const warn = vi.spyOn(global.console, "warn").mockImplementation(() => undefined);
+    const app = new Server("/__tilda/mock", 0).express;
+    const setup: MockRecord = {
+      request: { path: "/echo", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: { value: "[{{request.query.missing}}]" },
+        headers: { "Content-Type": ContentType.applicationJson },
+      },
+    };
+
+    await request(app).post("/__tilda/mock").send(setup).expect(200);
+
+    const res = await request(app).get("/echo").expect(200);
+    expect(res.body).toEqual({ value: "[]" });
+    expect(warn).toHaveBeenCalled();
+    expect(
+      warn.mock.calls.some(([msg]) =>
+        typeof msg === "string" && msg.includes("request.query.missing")
+      )
+    ).toBe(true);
+  });
+});
+
 describe("path patterns (story 06)", () => {
   test("a single `/users/:id` mock answers multiple concrete IDs", async () => {
     const app = new Server("/__tilda/mock", 0).express;

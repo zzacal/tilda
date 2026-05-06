@@ -65,6 +65,11 @@ export default class Store {
    * record pins an HTTP `method`. Ties are broken by registration order
    * (first-added wins).
    *
+   * Also returns the captured path parameters for the winning record (e.g.
+   * `{ id: "42" }` for `/users/:id` against `/users/42`), so callers can
+   * thread them downstream — story 12 templating uses this for
+   * `{{request.params.X}}` substitution.
+   *
    * This is an internal method used to find cache records. It is not part of the public API.
   */
   private getRecord(
@@ -72,15 +77,19 @@ export default class Store {
     params: MockParams,
     body: MockBody,
     method?: string
-  ): MockRecord | undefined {
+  ): { record: MockRecord; pathParams: Record<string, string> } | undefined {
     const candidates = this.cache
-      .map((record, index) => ({ record, index }))
+      .map((record, index) => ({
+        record,
+        index,
+        pathParams: this.extractPathParams(record.request.path, path),
+      }))
       .filter(
-        ({ record }) =>
-          this.matchPath(record.request.path, path) &&
-          this.matchMethod(record.request.method, method) &&
-          this.match(params, record.request.params) &&
-          this.match(body, record.request.body)
+        (candidate): candidate is typeof candidate & { pathParams: Record<string, string> } =>
+          candidate.pathParams !== undefined &&
+          this.matchMethod(candidate.record.request.method, method) &&
+          this.match(params, candidate.record.request.params) &&
+          this.match(body, candidate.record.request.body)
       );
 
     candidates.sort((a, b) => {
@@ -89,19 +98,32 @@ export default class Store {
       return a.index - b.index;
     });
 
-    return candidates[0]?.record;
+    const winner = candidates[0];
+    return winner ? { record: winner.record, pathParams: winner.pathParams } : undefined;
   }
 
   /**
-   * Matches a stored path (which may contain `:name` or `*` patterns) against
-   * an incoming request path. Plain stored paths are compared with strict
-   * equality so existing seeds keep their exact behavior.
+   * Tests a stored path against an incoming request path and returns the
+   * captured named parameters. `{}` for plain literal matches, `{ id: "42" }`
+   * for `/users/:id` against `/users/42`, and `undefined` when the path does
+   * not match. Plain stored paths take a strict-equality fast path so existing
+   * seeds keep their exact behavior.
    */
-  private matchPath(recordPath: string, requestPath: string): boolean {
+  private extractPathParams(
+    recordPath: string,
+    requestPath: string
+  ): Record<string, string> | undefined {
     if (!isPathPattern(recordPath)) {
-      return recordPath === requestPath;
+      return recordPath === requestPath ? {} : undefined;
     }
-    return compilePathPattern(recordPath).regex.test(requestPath);
+    const { regex, paramNames } = compilePathPattern(recordPath);
+    const match = regex.exec(requestPath);
+    if (!match) return undefined;
+    const params: Record<string, string> = {};
+    paramNames.forEach((name, i) => {
+      params[name] = match[i + 1];
+    });
+    return params;
   }
 
   /**
@@ -253,8 +275,29 @@ export default class Store {
     body: string | object = {},
     method?: string
   ): MockResponse | undefined {
-    const result = this.getRecord(path, params, body, method);
+    return this.lookup(path, params, body, method)?.response;
+  }
 
-    return result?.response;
+  /**
+   * Like `get`, but also returns the path parameters captured from `:name`
+   * segments in the matched record's path (e.g. `{ id: "42" }` for
+   * `/users/:id` against `/users/42`). For records with literal paths the
+   * `pathParams` map is empty.
+   *
+   * Used by the fetch handler to build the templating context (story 12) so
+   * `{{request.params.X}}` resolves to the captured value.
+   *
+   * @returns `{ response, pathParams }` for the winning record, or `undefined`
+   *          when no record matches.
+  */
+  lookup(
+    path: string,
+    params: object = {},
+    body: string | object = {},
+    method?: string
+  ): { response: MockResponse; pathParams: Record<string, string> } | undefined {
+    const result = this.getRecord(path, params, body, method);
+    if (!result) return undefined;
+    return { response: result.record.response, pathParams: result.pathParams };
   }
 }

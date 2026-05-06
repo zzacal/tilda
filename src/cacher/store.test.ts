@@ -707,3 +707,63 @@ describe("path patterns (story 06)", () => {
     });
   });
 });
+
+describe("lookup exposes path params (story 12)", () => {
+  const headers = { "Content-Type": ContentType.applicationJson };
+
+  test("named segments are captured in pathParams", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/users/:id", params: {}, body: {} },
+        response: { headers, status: 200, body: "user" },
+      },
+    ]);
+
+    expect(localStore.lookup("/users/42", {}, {})).toEqual({
+      response: { headers, status: 200, body: "user" },
+      pathParams: { id: "42" },
+    });
+  });
+
+  test("multiple named segments are all captured", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/orgs/:org/users/:id", params: {}, body: {} },
+        response: { headers, status: 200, body: "ok" },
+      },
+    ]);
+
+    expect(
+      localStore.lookup("/orgs/anthropic/users/42", {}, {})?.pathParams
+    ).toEqual({ org: "anthropic", id: "42" });
+  });
+
+  test("plain literal paths return an empty pathParams map", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/health", params: {}, body: {} },
+        response: { headers, status: 200, body: "ok" },
+      },
+    ]);
+
+    expect(localStore.lookup("/health", {}, {})?.pathParams).toEqual({});
+  });
+
+  test("wildcard `*` segments are not captured (only `:name` is)", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/orders/*/items", params: {}, body: {} },
+        response: { headers, status: 200, body: "items" },
+      },
+    ]);
+
+    expect(
+      localStore.lookup("/orders/anything/items", {}, {})?.pathParams
+    ).toEqual({});
+  });
+
+  test("returns undefined when no record matches", () => {
+    const localStore = new Store();
+    expect(localStore.lookup("/nope", {}, {})).toBeUndefined();
+  });
+});

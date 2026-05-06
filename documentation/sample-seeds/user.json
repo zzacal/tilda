@@ -86,5 +86,21 @@
       },
       "status": 200
     }
+  },
+  {
+    "request": {
+      "path": "/echo/:msg",
+      "body": {},
+      "params": {}
+    },
+    "response": {
+      "body": {
+        "you said": "{{ request.params.msg }}"
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "status": 200
+    }
   }
 ]
