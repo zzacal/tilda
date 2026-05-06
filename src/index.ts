@@ -3,7 +3,7 @@ import TildaServer, { CorsConfig } from "./server";
 import { MockRecord } from "./types/mockRecord";
 
 const port = parseInt(process.env.PORT ?? "5111");
-const mockPath = process.env.MOCK_PATH ?? "/mock";
+const mockPath = process.env.MOCK_PATH ?? "/__tilda/mock";
 
 const seedPath = process.env.SEED ?? "/data/seed.json";
 const seedsDir = process.env.SEEDS_DIR ?? "/data/seeds/";

@@ -318,6 +318,28 @@ describe("server", () => {
   }));
 });
 
+describe("namespaced control endpoint (story 07)", () => {
+  test("a user-registered /mock mock is served when the control endpoint lives at /__tilda/mock", async () => {
+    // Regression: with the old default `MOCK_PATH=/mock` the catch-all
+    // short-circuited any GET /mock to the registration handler, so an
+    // upstream API that exposed /mock could not be mocked.
+    const app = new Server("/__tilda/mock", 0).express;
+    const upstreamMock: MockRecord = {
+      request: { path: "/mock", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: "upstream-mock",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+
+    await request(app).post("/__tilda/mock").send(upstreamMock).expect(200);
+
+    const res = await request(app).get("/mock").expect(200);
+    expect(res.text).toBe("upstream-mock");
+  });
+});
+
 describe("CORS (story 11)", () => {
   // Each scenario gets its own server so the cors config is isolated.
   // We rely on supertest's app-binding (no listen()) to avoid port collisions.

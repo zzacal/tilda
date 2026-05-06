@@ -83,16 +83,22 @@ curl -i -X DELETE http://localhost:5111/user/007  # 204 — matches the DELETE-o
 
 ### Iterating on a mock
 
-While the server is running, you can refine a mock by `POST`ing to `/mock` again with the same `request` shape and a tweaked `response` — Tilda overwrites the existing record in place. "Same shape" means the same `path`, the same `method`, and deep-equal `params` and `body` (with omitted, `undefined`, or `null` treated as `{}`).
+Tilda's control endpoint lives at `/__tilda/mock` by default — a namespaced path so it never collides with an upstream you might want to mock (yes, including `/mock`). Override with the `MOCK_PATH` env var if you need a different one.
+
+While the server is running, you can refine a mock by `POST`ing to `/__tilda/mock` again with the same `request` shape and a tweaked `response` — Tilda overwrites the existing record in place. "Same shape" means the same `path`, the same `method`, and deep-equal `params` and `body` (with omitted, `undefined`, or `null` treated as `{}`).
 
 If you change the shape — for example, add a `params` constraint — the new record **coexists** with the old one, and the most specific match wins per request (see above). So you can layer a wildcard default and a specific override without restarting the server.
 
 ```sh
-curl -s -X POST http://localhost:5111/mock -H 'content-type: application/json' \
+curl -s -X POST http://localhost:5111/__tilda/mock -H 'content-type: application/json' \
   -d '{"request":{"path":"/api"},"response":{"status":200,"body":"v1"}}'
 
-curl -s -X POST http://localhost:5111/mock -H 'content-type: application/json' \
+curl -s -X POST http://localhost:5111/__tilda/mock -H 'content-type: application/json' \
   -d '{"request":{"path":"/api"},"response":{"status":200,"body":"v2"}}'
 
 curl http://localhost:5111/api   # → v2  (same shape: v2 replaced v1)
 ```
+
+## Upgrading
+
+The control endpoint moved from `/mock` to `/__tilda/mock` so you can mock an upstream's `/mock` route without colliding with Tilda itself. If your existing scripts POST to `/mock`, either point them at `/__tilda/mock` or run Tilda with `MOCK_PATH=/mock` to keep the old behavior.
