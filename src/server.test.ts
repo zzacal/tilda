@@ -340,6 +340,31 @@ describe("namespaced control endpoint (story 07)", () => {
   });
 });
 
+describe("path patterns (story 06)", () => {
+  test("a single `/users/:id` mock answers multiple concrete IDs", async () => {
+    const app = new Server("/__tilda/mock", 0).express;
+    const setup: MockRecord = {
+      request: { path: "/users/:id", params: {}, body: {}, method: "GET" },
+      response: {
+        status: 200,
+        body: "user",
+        headers: { "Content-Type": ContentType.textPlain },
+      },
+    };
+
+    await request(app).post("/__tilda/mock").send(setup).expect(200);
+
+    const res007 = await request(app).get("/users/007").expect(200);
+    expect(res007.text).toBe("user");
+
+    const res008 = await request(app).get("/users/008").expect(200);
+    expect(res008.text).toBe("user");
+
+    // And the parent path (no `:id` segment) still 404s — single-segment.
+    await request(app).get("/users").expect(404);
+  });
+});
+
 describe("CORS (story 11)", () => {
   // Each scenario gets its own server so the cors config is isolated.
   // We rely on supertest's app-binding (no listen()) to avoid port collisions.

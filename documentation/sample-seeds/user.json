@@ -68,5 +68,23 @@
       "status": 200,
       "delay": 30000
     }
+  },
+  {
+    "request": {
+      "path": "/user/:id",
+      "body": {},
+      "params": {}
+    },
+    "response": {
+      "body": {
+        "lastName": "Doe",
+        "firstName": "Jane",
+        "license": "toLearn"
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "status": 200
+    }
   }
 ]

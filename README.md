@@ -44,11 +44,35 @@ Testing your own CORS plumbing and want Tilda to stay out of the way? Set `CORS_
 
 ## How matching works
 
-When a request comes in, Tilda finds every record whose `path` matches exactly and whose stored `params` and `body` are subsets of the incoming request (subset matching uses `lodash.isMatch`, so a stored `{}` matches anything).
+When a request comes in, Tilda finds every record whose `path` matches (literally, or via a `:name` parameter or `*` wildcard — see below) and whose stored `params` and `body` are subsets of the incoming request (subset matching uses `lodash.isMatch`, so a stored `{}` matches anything).
 
 When more than one record matches, the **most specific record wins**. Specificity is the number of constrained fields in the stored `params` plus the stored `body` — top-level keys for objects, `1` for a non-empty string, `0` for `{}` or `undefined`. A method-specific record also outranks a method-agnostic one for the same path/params/body. Ties are broken by registration order: the first record added wins.
 
 This means you can layer a wildcard default (`params: {}`) with specific overrides (`params: { secret: "true" }`) for the same path, and the override fires when its constraints are met regardless of seed file order. Seed files in `SEEDS_DIR` are loaded in alphabetical order so the result is deterministic across machines.
+
+### Path patterns
+
+You can write `path` with parameters or a wildcard so one mock covers a family of URLs. Each token matches a single path segment:
+
+- `:name` captures one segment under that name. `/users/:id` matches `/users/123` and `/users/abc`, but not `/users` and not `/users/123/profile`.
+- `*` matches one segment without naming it. `/orders/*/items` matches `/orders/42/items` but not `/orders/items` (no segment) and not `/orders/a/b/items` (two segments).
+
+Literal characters stay literal — `/users.json/:id` treats the dot as a dot, not as "any character".
+
+Patterns lose ties with exact paths: an exact path always beats a parameterized one for the same URL, and a path with more literal segments beats one with fewer. So you can layer a generic catch-all and a specific override and let specificity sort them out:
+
+```sh
+# generic fallback for any user
+curl -s -X POST http://localhost:5111/__tilda/mock -H 'content-type: application/json' \
+  -d '{"request":{"path":"/users/:id"},"response":{"status":200,"body":{"name":"unknown"}}}'
+
+# exact override for one user
+curl -s -X POST http://localhost:5111/__tilda/mock -H 'content-type: application/json' \
+  -d '{"request":{"path":"/users/me"},"response":{"status":200,"body":{"name":"you"}}}'
+
+curl http://localhost:5111/users/me   # → {"name":"you"}     (exact wins)
+curl http://localhost:5111/users/42   # → {"name":"unknown"} (pattern catches the rest)
+```
 
 ### Matching by HTTP method
 

@@ -493,3 +493,217 @@ describe("re-POST identity (story 04)", () => {
     expect(localStore.get("/api", {}, { type: "free" })).toEqual(v2);
   });
 });
+
+describe("path patterns (story 06)", () => {
+  const headers = { "Content-Type": ContentType.applicationJson };
+  const r = (status: number, body: MockBody): MockResponse => ({
+    headers,
+    status,
+    body,
+  });
+
+  describe("named single-segment parameter `:id`", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/users/:id", params: {}, body: {} },
+        response: r(200, "user"),
+      },
+    ]);
+
+    test("matches a numeric segment", () => {
+      expect(localStore.get("/users/123", {}, {})?.body).toBe("user");
+    });
+
+    test("matches an alphabetic segment", () => {
+      expect(localStore.get("/users/abc", {}, {})?.body).toBe("user");
+    });
+
+    test("does not match a missing segment (parent path)", () => {
+      expect(localStore.get("/users", {}, {})).toBeUndefined();
+    });
+
+    test("does not match an extra segment (deeper path)", () => {
+      expect(localStore.get("/users/123/profile", {}, {})).toBeUndefined();
+    });
+  });
+
+  describe("single-segment wildcard `*`", () => {
+    const localStore = new Store([
+      {
+        request: { path: "/orders/*/items", params: {}, body: {} },
+        response: r(200, "items"),
+      },
+    ]);
+
+    test("matches one segment between literals", () => {
+      expect(localStore.get("/orders/anything/items", {}, {})?.body).toBe(
+        "items"
+      );
+    });
+
+    test("does not match when the wildcard segment is missing", () => {
+      expect(localStore.get("/orders/items", {}, {})).toBeUndefined();
+    });
+
+    test("does not match two segments where one is expected", () => {
+      expect(localStore.get("/orders/a/b/items", {}, {})).toBeUndefined();
+    });
+  });
+
+  describe("specificity vs. parameterized paths", () => {
+    test("an exact `/users/123` beats `/users/:id` for `/users/123`", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users/:id", params: {}, body: {} },
+          response: r(200, "any-user"),
+        },
+        {
+          request: { path: "/users/123", params: {}, body: {} },
+          response: r(200, "specific-007"),
+        },
+      ]);
+
+      expect(localStore.get("/users/123", {}, {})?.body).toBe("specific-007");
+      expect(localStore.get("/users/456", {}, {})?.body).toBe("any-user");
+    });
+
+    test("a more-literal `/users/me` coexists with `/users/:id`", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users/:id", params: {}, body: {} },
+          response: r(200, "any-user"),
+        },
+        {
+          request: { path: "/users/me", params: {}, body: {} },
+          response: r(200, "self"),
+        },
+      ]);
+
+      expect(localStore.get("/users/me", {}, {})?.body).toBe("self");
+      expect(localStore.get("/users/42", {}, {})?.body).toBe("any-user");
+    });
+
+    test("registration order does not flip the specificity decision", () => {
+      // Reverse the order of the previous test to prove it's score, not order.
+      const localStore = new Store([
+        {
+          request: { path: "/users/me", params: {}, body: {} },
+          response: r(200, "self"),
+        },
+        {
+          request: { path: "/users/:id", params: {}, body: {} },
+          response: r(200, "any-user"),
+        },
+      ]);
+
+      expect(localStore.get("/users/me", {}, {})?.body).toBe("self");
+      expect(localStore.get("/users/42", {}, {})?.body).toBe("any-user");
+    });
+  });
+
+  describe("backwards compatibility", () => {
+    test("plain literal seed paths keep working unchanged (AC4)", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users/123", params: {}, body: {} },
+          response: r(200, "literal"),
+        },
+      ]);
+
+      expect(localStore.get("/users/123", {}, {})?.body).toBe("literal");
+      // Strict equality: a different concrete path does not match.
+      expect(localStore.get("/users/124", {}, {})).toBeUndefined();
+    });
+
+    test("re-POST identity still keys on the literal path string", () => {
+      const localStore = new Store();
+      localStore.add({
+        request: { path: "/users/:id", params: {}, body: {} },
+        response: r(200, "v1"),
+      });
+      localStore.add({
+        request: { path: "/users/:id", params: {}, body: {} },
+        response: r(200, "v2"),
+      });
+      // Second add overwrites — exactly one record exists.
+      expect(localStore.get("/users/123", {}, {})?.body).toBe("v2");
+    });
+  });
+
+  describe("edge cases", () => {
+    test("regex special chars in literal segments are matched literally", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users.json/:id", params: {}, body: {} },
+          response: r(200, "json-user"),
+        },
+      ]);
+
+      expect(localStore.get("/users.json/42", {}, {})?.body).toBe("json-user");
+      // The `.` in `.json` must NOT match an arbitrary char — without escaping
+      // the regex would happily match `usersXjson`.
+      expect(localStore.get("/usersXjson/42", {}, {})).toBeUndefined();
+    });
+
+    test("trailing slash on the request path does not match a no-trailing-slash pattern", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users/:id", params: {}, body: {} },
+          response: r(200, "user"),
+        },
+      ]);
+
+      expect(localStore.get("/users/123/", {}, {})).toBeUndefined();
+    });
+
+    test("`:name` mid-segment is treated as a literal, not a parameter", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/foo:bar", params: {}, body: {} },
+          response: r(200, "literal-colon"),
+        },
+      ]);
+
+      expect(localStore.get("/foo:bar", {}, {})?.body).toBe("literal-colon");
+      expect(localStore.get("/fooX", {}, {})).toBeUndefined();
+    });
+
+    test("`*` mid-segment is treated as a literal, not a wildcard", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/foo*bar", params: {}, body: {} },
+          response: r(200, "literal-star"),
+        },
+      ]);
+
+      expect(localStore.get("/foo*bar", {}, {})?.body).toBe("literal-star");
+      expect(localStore.get("/fooXbar", {}, {})).toBeUndefined();
+    });
+
+    test("a pattern can combine `:name` and `*` segments", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users/:id/*/edit", params: {}, body: {} },
+          response: r(200, "edit"),
+        },
+      ]);
+
+      expect(localStore.get("/users/42/profile/edit", {}, {})?.body).toBe(
+        "edit"
+      );
+      expect(localStore.get("/users/42/edit", {}, {})).toBeUndefined();
+    });
+
+    test("`:id` requires at least one character (an empty segment does not match)", () => {
+      const localStore = new Store([
+        {
+          request: { path: "/users/:id", params: {}, body: {} },
+          response: r(200, "user"),
+        },
+      ]);
+
+      // `//` produces an empty segment; `[^/]+` rightly rejects it.
+      expect(localStore.get("/users/", {}, {})).toBeUndefined();
+    });
+  });
+});

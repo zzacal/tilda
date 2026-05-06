@@ -1,6 +1,52 @@
 import * as _ from 'lodash'
 import { MockBody, MockParams, MockRecord, MockResponse } from '../types/mockRecord'
 
+/**
+ * Characters with special meaning in a JS regex. Used to escape literal path
+ * segments so things like `.`, `+`, or `(` in a stored path are matched
+ * verbatim — `/users.json/:id` should not treat `.` as "any character".
+ */
+const REGEX_SPECIAL = /[.*+?^${}()|[\]\\]/g;
+
+/**
+ * Decides whether a stored path uses pattern syntax (`:name` or `*`). Plain
+ * paths take a strict-equality fast path so existing seeds keep working
+ * without any regex compilation overhead.
+ */
+function isPathPattern(path: string): boolean {
+  return path.includes(":") || path.includes("*");
+}
+
+/**
+ * Compiles a stored path pattern into a regex plus the names of any captured
+ * params. Single-segment-only:
+ *  - `:name` → `([^/]+)` and pushes `name` onto `paramNames`
+ *  - `*`     → `[^/]+` (unnamed wildcard)
+ *  - everything else is treated as a literal segment and regex-escaped
+ *
+ * `:name` and `*` are recognized only when they make up an *entire* segment;
+ * inside any other segment they are escaped and matched literally. That keeps
+ * the syntax predictable — there's no partial-segment wildcard to reason about.
+ */
+function compilePathPattern(pattern: string): {
+  regex: RegExp;
+  paramNames: string[];
+} {
+  const segments = pattern.split("/");
+  const paramNames: string[] = [];
+  const regexSegments = segments.map((segment) => {
+    if (segment.startsWith(":") && segment.length > 1) {
+      paramNames.push(segment.slice(1));
+      return "([^/]+)";
+    }
+    if (segment === "*") {
+      return "[^/]+";
+    }
+    return segment.replace(REGEX_SPECIAL, "\\$&");
+  });
+  return { regex: new RegExp(`^${regexSegments.join("/")}$`), paramNames };
+}
+
 export default class Store {
   private cache: MockRecord[] = [];
   constructor(seed?: MockRecord[]) {
@@ -14,9 +60,10 @@ export default class Store {
    * Searches the mock cache for a record matching the given request details.
    *
    * When multiple records match, the most specific one wins. Specificity is
-   * the number of constrained fields in the stored `params` + `body`, plus
-   * +1 when the record pins an HTTP `method`. Ties are broken by registration
-   * order (first-added wins).
+   * the count of literal path segments (non-`:name`, non-`*`) plus the number
+   * of constrained fields in the stored `params` + `body`, plus `+1` when the
+   * record pins an HTTP `method`. Ties are broken by registration order
+   * (first-added wins).
    *
    * This is an internal method used to find cache records. It is not part of the public API.
   */
@@ -30,7 +77,7 @@ export default class Store {
       .map((record, index) => ({ record, index }))
       .filter(
         ({ record }) =>
-          record.request.path === path &&
+          this.matchPath(record.request.path, path) &&
           this.matchMethod(record.request.method, method) &&
           this.match(params, record.request.params) &&
           this.match(body, record.request.body)
@@ -45,8 +92,38 @@ export default class Store {
     return candidates[0]?.record;
   }
 
+  /**
+   * Matches a stored path (which may contain `:name` or `*` patterns) against
+   * an incoming request path. Plain stored paths are compared with strict
+   * equality so existing seeds keep their exact behavior.
+   */
+  private matchPath(recordPath: string, requestPath: string): boolean {
+    if (!isPathPattern(recordPath)) {
+      return recordPath === requestPath;
+    }
+    return compilePathPattern(recordPath).regex.test(requestPath);
+  }
+
+  /**
+   * Counts the literal (non-`:name`, non-`*`) segments in a path. Used by
+   * `specificity` so an exact path beats a parameterized one — `/users/123`
+   * (2 literals) wins over `/users/:id` (1 literal) for `/users/123`, and
+   * `/users/me` (2 literals) wins over `/users/:id` for `/users/me`.
+   */
+  private pathSpecificity(path: string): number {
+    return path
+      .split("/")
+      .filter(
+        (segment) =>
+          segment.length > 0 &&
+          segment !== "*" &&
+          !(segment.startsWith(":") && segment.length > 1)
+      ).length;
+  }
+
   private specificity(record: MockRecord): number {
     return (
+      this.pathSpecificity(record.request.path) +
       this.fieldCount(record.request.params) +
       this.fieldCount(record.request.body) +
       (record.request.method ? 1 : 0)
