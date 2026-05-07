@@ -1,11 +1,29 @@
-version: '3.3'
 services:
   tilda:
-    volumes:
-      - ../sample-seeds:/data/seeds/
+    image: ghcr.io/zzacal/tilda:v5.0.17-alpha
     container_name: user-tilda
     ports:
       - '8110:8110'
+    volumes:
+      - ../sample-seeds:/data/seeds/
+      # Mount a host directory for captures so they survive restarts.
+      # - ./captures:/data/captures/
     environment:
+      # --- Server ---
       - PORT=8110
-    image: ghcr.io/zzacal/tilda:v4.0.0-alpha
+      # - MOCK_PATH=/__tilda/mock
+
+      # --- Seed sources ---
+      # - SEED=/data/seed.json
+      # - SEEDS_DIR=/data/seeds/
+      # - CAPTURES_DIR=/data/captures/
+
+      # --- CORS (browser callers) ---
+      # - CORS_ORIGIN=*
+      # - CORS_DISABLE=false
+
+      # --- Record / replay (story 05) ---
+      # - TILDA_MODE=replay              # replay | record | passthrough
+      # - UPSTREAM=https://api.example.com   # required for record / passthrough
+      # - CAPTURE_REDACT=X-API-Key,X-Internal-Token
+      # - CAPTURE_ERRORS=false           # truthy = capture 4xx/5xx too
