@@ -83,21 +83,18 @@ export const recorder = (config: RecorderConfig) =>
     }
 
     const upstreamRes = result.response
-    // Three layers strip from the wire response:
+    // Two layers strip from the wire response:
     //   1. CORS — Tilda's middleware is source of truth.
     //   2. Transport — Node fetch decoded the body; wire-form headers
     //      (content-encoding, content-length, transfer-encoding, date,
     //      connection, keep-alive) now lie about it.
-    //   3. CAPTURE_REDACT secrets — same set the persist path uses, so a
-    //      record-mode caller can never observe a header that's missing
-    //      at replay time. Story 05 #8 issue 2 (fed's call after usr's
-    //      eval): symmetry beats transparent-proxy semantics here because
-    //      a record session that "works" but breaks on replay is the
-    //      worst-case footgun.
-    const responseHeaders = redactHeaders(
-      stripTransportHeaders(stripCorsHeaders(upstreamRes.headers)),
-      config.redactList
-    )
+    // CAPTURE_REDACT secrets are deliberately NOT stripped on the wire:
+    // record/passthrough modes act as a transparent proxy on the live
+    // forward, so an upstream Set-Cookie still sets a session cookie in
+    // the caller's browser. The persist path (in buildRecord) DOES
+    // redact, so secrets never land in capture files. README's "What's
+    // stripped" section spells out the file-only-redaction contract.
+    const responseHeaders = stripTransportHeaders(stripCorsHeaders(upstreamRes.headers))
 
     for (const [key, value] of Object.entries(responseHeaders)) {
       res.setHeader(key, value)

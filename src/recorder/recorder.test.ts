@@ -460,11 +460,13 @@ describe('recorder middleware', () => {
     expect(res.body.msg).toBe('cors!')
   })
 
-  test('CAPTURE_REDACT secrets are stripped from the WIRE response in record mode (symmetry with replay)', async () => {
-    // Story 05 #8 issue 2: redaction is symmetric. A user who sees the
-    // forwarded response in record mode must not observe any header that
-    // would be missing on replay — otherwise "it worked while recording"
-    // is a false positive that breaks on the offline replay step.
+  test('CAPTURE_REDACT secrets pass through to the WIRE response in record mode', async () => {
+    // Story 05 #8 issue 2: record/passthrough modes act as a transparent
+    // proxy on the live forward. An upstream Set-Cookie still sets a
+    // session cookie in the caller's browser; an upstream Authorization
+    // still reaches the caller. This makes session-based flows actually
+    // work through record mode. The persist path redacts so secrets
+    // never land in capture files.
     app.use(
       recorder({
         mode: 'record',
@@ -478,18 +480,15 @@ describe('recorder middleware', () => {
     )
 
     const res = await request(app).get('/secret').expect(200)
-    // Defaults stripped:
-    expect(res.headers['set-cookie']).toBeUndefined()
-    expect(res.headers['authorization']).toBeUndefined()
-    // CAPTURE_REDACT extension stripped:
-    expect(res.headers['x-internal-token']).toBeUndefined()
+    // Defaults reach the caller:
+    expect(res.headers['set-cookie']).toBeDefined()
+    expect(res.headers['authorization']).toBeDefined()
+    // CAPTURE_REDACT extension reaches the caller too:
+    expect(res.headers['x-internal-token']).toBeDefined()
   })
 
-  test('CAPTURE_REDACT secrets are stripped from the WIRE response in passthrough mode too', async () => {
-    // Same global rule: any forward mode strips the configured redact set.
-    // Passthrough doesn't have a record/replay symmetry concern, but
-    // making the rule mode-conditional is harder to explain and easier
-    // to break — so we apply it everywhere.
+  test('CAPTURE_REDACT secrets pass through to the WIRE response in passthrough mode', async () => {
+    // Same rule as record mode: the wire is transparent, only persist redacts.
     app.use(
       recorder({
         mode: 'passthrough',
@@ -503,7 +502,7 @@ describe('recorder middleware', () => {
     )
 
     const res = await request(app).get('/secret').expect(200)
-    expect(res.headers['set-cookie']).toBeUndefined()
+    expect(res.headers['set-cookie']).toBeDefined()
   })
 
   test('Set-Cookie is stripped from the persisted capture (record mode)', async () => {
