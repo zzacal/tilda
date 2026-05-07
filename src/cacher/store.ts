@@ -51,9 +51,13 @@ export default class Store {
   private cache: MockRecord[] = [];
   constructor(seed?: MockRecord[]) {
     this.cache = seed ?? [];
-    console.log(
-      `\n\ninitial cache\n${JSON.stringify(this.cache.map((m) => m.request.path))}\n\n`
+    // Include the method so users can tell two same-path records apart
+    // (e.g. the sample seed has GET + DELETE for `/user/007` — story 05
+    // #8 issue 5, flagged by usr). Method-agnostic records show as `*`.
+    const labeled = this.cache.map(
+      (m) => `${(m.request.method ?? '*').toUpperCase()} ${m.request.path}`
     );
+    console.log(`\n\ninitial cache\n${JSON.stringify(labeled)}\n\n`);
   }
 
   /**

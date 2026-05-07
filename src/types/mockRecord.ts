@@ -12,7 +12,13 @@ export enum ContentType {
 }
 
 type MockHeaders = {
-  "Content-Type": ContentType
+  /**
+   * Plain `string` rather than the `ContentType` enum so captured records
+   * (story 05) can faithfully store whatever an upstream returns
+   * (`application/octet-stream`, vendor MIME types, etc.). The enum is
+   * still exported as ergonomic constants for hand-authored seeds.
+   */
+  "Content-Type": string;
 } & Keyable;
 
 type Keyable = {
@@ -31,6 +37,13 @@ export type MockRequest = {
    * HTTP method to match (case-insensitive). Omit to match any method.
    */
   method?: string;
+  /**
+   * Headers seen on the captured request (story 05). Stored for
+   * record-keeping only — the matcher never consults headers, so this
+   * field is informational. Sensitive headers (`Authorization`, `Cookie`,
+   * etc.) are stripped before persistence; see `recorder/redact.ts`.
+   */
+  headers?: Record<string, string | string[]>;
 };
 
 export type MockResponse = {

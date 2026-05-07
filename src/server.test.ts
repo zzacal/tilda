@@ -1,7 +1,13 @@
-import { expect, test, describe, vi, beforeAll, afterAll } from 'vitest'
+import { expect, test, describe, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 
+import express from "express";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import request from "supertest";
 import Server from "./server";
+import { buildRedactList } from "./recorder";
+import { fromDir } from "./seeding/seed-files";
 import { ContentType, MockRecord } from "./types/mockRecord";
 
 /**
@@ -608,5 +614,183 @@ describe("graceful shutdown (story 15)", () => {
 
     // Calling again after completion is also a no-op.
     await expect(server.close()).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 05: record / replay / passthrough integration
+// ---------------------------------------------------------------------------
+
+interface Upstream {
+  url: string;
+  close: () => Promise<void>;
+  callCount: () => number;
+}
+
+/**
+ * Spin up a real upstream HTTP server on an OS-assigned port. We can't use
+ * supertest for the upstream because `forward.ts` makes a real `fetch()`
+ * call and supertest only intercepts the receiving Express app. Each
+ * upstream tracks its own call count so tests can prove a request did or
+ * did not reach it (cache-hit vs forward).
+ */
+async function startUpstream(
+  handler: (req: express.Request, res: express.Response) => void
+): Promise<Upstream> {
+  let calls = 0;
+  const app = express();
+  app.use(express.json());
+  app.use((req, res) => {
+    calls++;
+    handler(req, res);
+  });
+  return new Promise((resolve) => {
+    const server = app.listen(0, () => {
+      const addr = server.address();
+      if (!addr || typeof addr === "string") throw new Error("upstream bind failed");
+      resolve({
+        url: `http://127.0.0.1:${addr.port}`,
+        close: () =>
+          new Promise<void>((res, rej) =>
+            server.close((err) => (err ? rej(err) : res()))
+          ),
+        callCount: () => calls,
+      });
+    });
+  });
+}
+
+describe("record / replay / passthrough (story 05)", () => {
+  let tmp: string;
+  let upstream: Upstream | undefined;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tilda-int-"));
+  });
+
+  afterEach(async () => {
+    if (upstream) {
+      await upstream.close();
+      upstream = undefined;
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  test("record then replay: captures persist and serve via the seed loader on next boot", async () => {
+    upstream = await startUpstream((req, res) => {
+      res.json({ url: req.url, method: req.method, hello: "world" });
+    });
+
+    // Phase 1: record mode. A cache miss forwards upstream, persists the
+    // capture, and registers it with the live store.
+    const recordServer = new Server("/__tilda/mock", 0, undefined, undefined, {
+      mode: "record",
+      upstream: upstream.url,
+      capturesDir: tmp,
+      redactList: buildRedactList(undefined),
+      captureErrors: false,
+    });
+    const live = await request(recordServer.express).get("/api/foo").expect(200);
+    expect(live.body.hello).toBe("world");
+    expect(upstream.callCount()).toBe(1);
+    expect(fs.readdirSync(tmp).length).toBe(1);
+
+    // Same request hits the in-memory cache (recorder called Store.add) so
+    // upstream is not contacted a second time.
+    await request(recordServer.express).get("/api/foo").expect(200);
+    expect(upstream.callCount()).toBe(1);
+
+    // Phase 2: simulate a restart. The seed loader picks up the captures dir
+    // exactly the way `index.ts` does at boot. A fresh TildaServer in replay
+    // mode (no recorderInit) serves the same response without contacting
+    // upstream.
+    const seed = fromDir(tmp);
+    expect(seed.length).toBe(1);
+
+    const replayServer = new Server("/__tilda/mock", 0, seed);
+    const replayed = await request(replayServer.express).get("/api/foo").expect(200);
+    expect(replayed.body.hello).toBe("world");
+    expect(upstream.callCount()).toBe(1);
+  });
+
+  test("pre-existing seed beats forward — record mode never calls upstream on a cache hit", async () => {
+    upstream = await startUpstream((_req, res) => {
+      res.json({ from: "upstream" });
+    });
+
+    const seed: MockRecord[] = [
+      {
+        request: { path: "/seeded", method: "GET", params: {}, body: {} },
+        response: {
+          status: 200,
+          headers: { "Content-Type": ContentType.applicationJson },
+          body: { from: "seed" },
+        },
+      },
+    ];
+
+    const server = new Server("/__tilda/mock", 0, seed, undefined, {
+      mode: "record",
+      upstream: upstream.url,
+      capturesDir: tmp,
+      redactList: buildRedactList(undefined),
+      captureErrors: false,
+    });
+
+    const res = await request(server.express).get("/seeded").expect(200);
+    expect(res.body).toEqual({ from: "seed" });
+    expect(upstream.callCount()).toBe(0);
+    expect(fs.readdirSync(tmp)).toEqual([]);
+  });
+
+  test("upstream unreachable in record mode → 502 with the locked JSON body shape", async () => {
+    const server = new Server("/__tilda/mock", 0, undefined, undefined, {
+      mode: "record",
+      upstream: "http://tilda-nonexistent.invalid",
+      capturesDir: tmp,
+      redactList: buildRedactList(undefined),
+      captureErrors: false,
+    });
+
+    const res = await request(server.express).get("/anything").expect(502);
+    expect(res.body.error).toBe("Tilda could not reach the upstream");
+    expect(res.body.upstream).toBe("http://tilda-nonexistent.invalid");
+    expect(res.body.request).toBe("GET /anything");
+    expect(typeof res.body.reason).toBe("string");
+    expect(res.body.reason.length).toBeGreaterThan(0);
+  });
+
+  test("default TILDA_MODE=replay (no recorderInit) leaves the chain functionally unchanged", async () => {
+    // The 25 tests in the top-level `describe("server")` block above all use
+    // the no-recorderInit constructor and exercise the legacy chain end to
+    // end. This test is a single explicit smoke check for the seam itself
+    // — story 05 should be opt-in only.
+    const server = new Server("/__tilda/mock", 0);
+    const res = await request(server.express).get("/missing");
+    expect(res.status).toBe(404);
+    expect(res.text).toContain("No mock matched GET /missing");
+  });
+
+  test("passthrough mode forwards upstream but never persists or registers", async () => {
+    upstream = await startUpstream((req, res) => {
+      res.json({ url: req.url, mode: "live" });
+    });
+
+    const server = new Server("/__tilda/mock", 0, undefined, undefined, {
+      mode: "passthrough",
+      upstream: upstream.url,
+      capturesDir: tmp,
+      redactList: buildRedactList(undefined),
+      captureErrors: false,
+    });
+
+    const res = await request(server.express).get("/anything").expect(200);
+    expect(res.body.mode).toBe("live");
+    expect(upstream.callCount()).toBe(1);
+    expect(fs.readdirSync(tmp)).toEqual([]);
+
+    // Second hit forwards again — passthrough never primes the cache.
+    await request(server.express).get("/anything").expect(200);
+    expect(upstream.callCount()).toBe(2);
   });
 });

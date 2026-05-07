@@ -2,7 +2,8 @@ import cors, { CorsOptions } from 'cors'
 import express from 'express'
 import type { Server as HttpServer } from 'http'
 import Store from './cacher/store'
-import { fetch, mock } from './handlers'
+import { fetch, mock, notFound } from './handlers'
+import { recorder, type RecorderConfig } from './recorder'
 import { MockRecord } from './types/mockRecord';
 
 export interface CorsConfig {
@@ -12,13 +13,26 @@ export interface CorsConfig {
   disabled: boolean;
 }
 
+/**
+ * Subset of `RecorderConfig` that callers (`src/index.ts`, tests) supply.
+ * `store` and `mockPath` are filled in by `TildaServer` from its own state
+ * so callers don't have to plumb them.
+ */
+export type RecorderInit = Omit<RecorderConfig, 'store' | 'mockPath'>;
+
 export default class TildaServer {
   express: express.Express = express();
   store: Store;
   private _httpServer: HttpServer | undefined;
   private closePromise: Promise<void> | undefined;
 
-  constructor (mockPath: string, port: number, seed?: MockRecord[], corsConfig?: CorsConfig) {
+  constructor (
+    mockPath: string,
+    port: number,
+    seed?: MockRecord[],
+    corsConfig?: CorsConfig,
+    recorderInit?: RecorderInit
+  ) {
     this.store = new Store(seed);
 
     if (!corsConfig?.disabled) {
@@ -33,9 +47,22 @@ export default class TildaServer {
     this.express.use(express.urlencoded({ extended: true }))
     this.express.use(express.json())
 
-    this.express.use(fetch(this.store, mockPath, port))
-
-    this.express.post(mockPath, mock(this.store))
+    if (recorderInit) {
+      // Record/passthrough chain:
+      //   fetch(next-on-miss) → recorder → mock-control → notFound
+      // The recorder responds in the common case; notFound is a safety
+      // net for stray requests (e.g. GET /__tilda/mock — see `recorder.ts`'s
+      // `mockPath` short-circuit).
+      this.express.use(fetch(this.store, mockPath, port, 'next'))
+      this.express.use(recorder({ ...recorderInit, store: this.store, mockPath }))
+      this.express.post(mockPath, mock(this.store))
+      this.express.use(notFound(port, mockPath))
+    } else {
+      // Replay chain (default): unchanged from pre-story-05.
+      //   fetch(respond-on-miss) → mock-control
+      this.express.use(fetch(this.store, mockPath, port))
+      this.express.post(mockPath, mock(this.store))
+    }
   }
 
   /**
